@@ -26,7 +26,6 @@ public class UpdateChecker {
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(5000);
                 connection.setReadTimeout(5000);
-                connection.setRequestProperty("Authorization", "Bearer ");
                 connection.setRequestProperty("User-Agent", "HeadHunterToken");
 
                 int responseCode = connection.getResponseCode();
@@ -68,7 +67,6 @@ public class UpdateChecker {
         MainScript.runAsync(() -> {
             try {
                 HttpURLConnection conn = (HttpURLConnection) new URL(apiUrl).openConnection();
-                conn.setRequestProperty("Authorization", "Bearer ");
                 conn.setRequestProperty("User-Agent", "HeadHunterToken");
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -106,7 +104,6 @@ public class UpdateChecker {
 
                 HttpURLConnection conn = (HttpURLConnection) new URL(downloadUrl).openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("Authorization", "Bearer ");
                 conn.setRequestProperty("Accept", "application/octet-stream");
                 conn.setRequestProperty("User-Agent", "HeadHunterToken");
 
