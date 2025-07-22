@@ -43,12 +43,10 @@ public class SoundScript implements Listener {
 
         String headTypeString = skull.getPersistentDataContainer().get(headTypeKey, PersistentDataType.STRING);
 
-        // Check if we can actually interact (not cancelled by protection plugins)
         if (event.useInteractedBlock() == org.bukkit.event.Event.Result.DENY) {
             return;
         }
 
-        // Cancel the event to prevent note block sound
         event.setCancelled(true);
 
         Location soundLocation = noteBlock.getLocation().add(0.5, 0.5, 0.5);
@@ -98,7 +96,6 @@ public class SoundScript implements Listener {
     public static void onNoteBlockPlay(org.bukkit.event.block.NotePlayEvent event) {
         if (!config.getBoolean("head-sound-effects.enabled", true)) return;
 
-        // Check if the event was cancelled by protection plugins
         if (event.isCancelled()) return;
 
         Block noteBlock = event.getBlock();
@@ -116,7 +113,6 @@ public class SoundScript implements Listener {
 
         String headTypeString = skull.getPersistentDataContainer().get(headTypeKey, PersistentDataType.STRING);
 
-        // Cancel the original note block sound
         event.setCancelled(true);
 
         Location soundLocation = noteBlock.getLocation().add(0.5, 0.5, 0.5);
@@ -153,7 +149,6 @@ public class SoundScript implements Listener {
         if (event.getItemInHand().getType() != Material.PLAYER_HEAD) return;
         if (!event.getItemInHand().hasItemMeta()) return;
 
-        // Check if the block placement was cancelled by protection plugins
         if (event.isCancelled()) return;
 
         Block placedBlock = event.getBlockPlaced();
