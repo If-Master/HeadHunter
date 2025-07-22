@@ -3,10 +3,9 @@
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
 Current version: `1.21.5.015` 
-API-version: `1.21.`
+API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
-
 ```
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
@@ -137,3 +136,7 @@ Permissions:
       headhunter.update: true
       headhunter.purchased: true
 ```
+
+
+Known issues:
+1. Texture ain't shown on bedrock clients - With Geyser 
