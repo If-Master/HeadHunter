@@ -58,7 +58,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private NamespacedKey killTimeKey;
     public static NamespacedKey headTypeKey;
     private NamespacedKey loreKey;
-    //private final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 
     public static final Map<EntityType, String> mobTextures = new HashMap<>();
     private final Map<String, UUID> mobHeadUUIDs = new HashMap<>();
@@ -285,13 +284,13 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 }
                 spawnHead((Player) sender, args);
                 break;
-            case "purchased":
+            case "give":
                 if (!sender.hasPermission("headhunter.purchased")) {
                     sender.sendMessage("§cYou don't have permission to spawn heads!");
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage("§cUsage: /hh purchased <mob> [name]");
+                    sender.sendMessage("§cUsage: /hh give <mob> [name]");
                     return true;
                 }
                 if (sender instanceof Player) {
@@ -404,7 +403,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
     private void purchaseHeadConsole(CommandSender sender, String[] args) {
         if (args.length < 4) {
-            sender.sendMessage("§cUsage: /hh purchased entity <mob> <playerName>");
+            sender.sendMessage("§cUsage: /hh give entity <mob> <playerName>");
             return;
         }
 
@@ -445,7 +444,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             });
             sender.sendMessage("§aGiven head to online player " + targetName);
         } else {
-            // Queue the head for offline delivery
             queueHeadForPlayer(targetPlayer.getUniqueId(), head);
             sender.sendMessage("§aQueued head for offline player " + targetName);
         }
@@ -454,7 +452,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
     private void spawnHead(Player player, String[] args) {
         String type = args[1].toLowerCase();
-        //String currentTime = dateFormat.format(new Date());
 
         if (type.equals("player")) {
             if (args.length < 3) {
@@ -476,12 +473,10 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
                 List<String> lore = new ArrayList<>();
                 lore.add("§7Spawned by: §e" + player.getName());
-                //lore.add("§7Time: §e" + currentTime);
                 meta.setLore(lore);
 
                 meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, playerName);
                 meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
-                //meta.getPersistentDataContainer().set(killTimeKey, PersistentDataType.STRING, currentTime);
                 meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, "PLAYER");
 
                 String loreData = String.join("|", lore);
@@ -519,7 +514,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
     private void purchaseHead(CommandSender sender, String[] args) {
         if (args.length < 4) {
-            sender.sendMessage("§cUsage: /hh purchased entity <mob> <player>");
+            sender.sendMessage("§cUsage: /hh give entity <mob> <player>");
             return;
         }
 
@@ -569,7 +564,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         File file = new File(getDataFolder(), "queued_heads.yml");
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
 
-        // Convert ItemStack to Base64 string
         String serializedItem = ItemSerializer.serialize(headItem);
 
         List<String> list = config.getStringList(playerUUID.toString());
@@ -628,10 +622,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                             meta.getPersistentDataContainer().get(killerKey, PersistentDataType.STRING));
                     skull.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING,
                             meta.getPersistentDataContainer().get(headTypeKey, PersistentDataType.STRING));
-                    //if (meta.getPersistentDataContainer().has(killTimeKey, PersistentDataType.STRING)) {
-                   //     skull.getPersistentDataContainer().set(killTimeKey, PersistentDataType.STRING,
-                    //            meta.getPersistentDataContainer().get(killTimeKey, PersistentDataType.STRING));
-                    //}
                     skull.update();
                 }
             }
@@ -695,18 +685,15 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             meta.setOwningPlayer(victim);
             meta.setDisplayName("§b" + victim.getName() + "'s Head");
 
-            //String killTime = dateFormat.format(new Date());
 
             List<String> lore = new ArrayList<>();
             lore.add("§7Killed by: §c" + killer.getName());
-            //lore.add("§7Time: §e" + killTime);
             meta.setLore(lore);
 
             String loreData = String.join("|", lore);
 
             meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, victim.getName());
             meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer.getName());
-            //meta.getPersistentDataContainer().set(killTimeKey, PersistentDataType.STRING, killTime);
             meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, "PLAYER");
             meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
             head.setItemMeta(meta);
@@ -767,10 +754,9 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             if (!spawner.equals("Server")) {
                 lore.add("§7Spawned by: §e" + spawner);
             } else {
-                lore.add("§7Purchased by: §e" + targetName);
+                lore.add("§7Was given to: §e" + targetName);
 
             }
-            //lore.add("§7Time: §e" + );
             meta.setLore(lore);
 
             String loreData = String.join("|", lore);
@@ -790,7 +776,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
             meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, displayName);
             meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
-            //meta.getPersistentDataContainer().set(killTimeKey, PersistentDataType.STRING, spawnTime);
             meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, entityType.name());
             meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
             head.setItemMeta(meta);
@@ -908,7 +893,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
 
             player.sendMessage("§aYou received " + base64List.size() + " head(s) while you were offline.");
-            config.set(uuid.toString(), null); // Clear queue
+            config.set(uuid.toString(), null);
 
             try {
                 config.save(file);
@@ -918,7 +903,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
 
         });
-//        Player player = event.getPlayer();
 
         if (!player.hasPermission("hh.update") || !isUpdateAvailable) return;
         runLater(player.getLocation(), () -> {
