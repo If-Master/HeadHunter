@@ -1,0 +1,36 @@
+name: HeadHunter
+version: '1.21.5.016'
+main: me.kanuunankuulaspluginhead.headHunter.MainScript
+api-version: '1.21'
+description: A plugin that drops player and mob heads when killed
+author: Kanuunankuula
+
+
+commands:
+  hh:
+    description: HeadHunter main command
+    usage: /hh [spawn|reload|]
+    aliases: [headhunter]
+
+permissions:
+  headhunter.update:
+    description: Allows updaing the plugin
+    default: op
+  headhunter.reload:
+    description: Allows reloading the plugin configuration
+    default: op
+  headhunter.spawn:
+    description: Allows spawning heads with commands
+    default: op
+  headhunter.purchased:
+    description: Allows spawning heads with commands (Console)
+    default: op
+
+  headhunter.*:
+    description: Gives access to all HeadHunter permissions
+    default: op
+    children:
+      headhunter.reload: true
+      headhunter.spawn: true
+      headhunter.update: true
+      headhunter.purchased: true
