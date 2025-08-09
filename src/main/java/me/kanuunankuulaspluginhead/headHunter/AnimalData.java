@@ -132,7 +132,7 @@ public class AnimalData {
         MainScript.mobTextures.put(EntityType.SALMON, "http://textures.minecraft.net/texture/8aeb21a25e46806ce8537fbd6668281cf176ceafe95af90e94a5fd84924878");
         MainScript.mobTextures.put(EntityType.FOX, "http://textures.minecraft.net/texture/d631aac2c7d795d9816ca838b005927bb352b525d61de8ebb1461d304d1d2c00");
         MainScript.mobTextures.put(EntityType.BAT, "http://textures.minecraft.net/texture/9e99deef919db66ac2bd28d6302756ccd57c7f8b12b9dca8f41c3e0a04ac1cc");
-        MainScript.mobTextures.put(EntityType.CAT, "http://textures.minecraft.net/texture/27f596afb869f806f61085a499b7e75148913d3e60601f166258dfbcb82a3bbf=");
+        MainScript.mobTextures.put(EntityType.CAT, "http://textures.minecraft.net/texture/27f596afb869f806f61085a499b7e75148913d3e60601f166258dfbcb82a3bbf");
         MainScript.mobTextures.put(EntityType.GLOW_SQUID, "http://textures.minecraft.net/texture/4cb07d905888f8472252f9cfa39aa317babcad30af08cfe751adefa716b02036");
         MainScript.mobTextures.put(EntityType.OCELOT, "http://textures.minecraft.net/texture/cbb214a348529a0979574b87b06a480cc6177810f79491ce983f16dc3d844662");
         MainScript.mobTextures.put(EntityType.PUFFERFISH, "http://textures.minecraft.net/texture/2dd4b96726cfd36015af3778336c5226ae12fe80ca8afeee763f4542a883c282");
