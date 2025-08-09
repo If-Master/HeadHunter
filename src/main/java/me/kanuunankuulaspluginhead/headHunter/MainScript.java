@@ -23,9 +23,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerProfile;
 import org.bukkit.profile.PlayerTextures;
-import org.bukkit.block.BlockFace;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
@@ -368,16 +365,16 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             completions.add("update");
             completions.add("uv");
             completions.add("ignore");
-            completions.add("purchased");
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("purchased")) {
+            completions.add("give");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             completions.add("entity");
-        } else if (args.length == 3 && args[0].equalsIgnoreCase("purchased") && args[1].equalsIgnoreCase("entity")) {
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("give") && args[1].equalsIgnoreCase("entity")) {
             for (EntityType type : EntityType.values()) {
                 if (type.isAlive() && mobTextures.containsKey(type)) {
                     completions.add(type.name().toLowerCase());
                 }
             }
-        } else if (args.length == 4 && args[0].equalsIgnoreCase("purchased") && args[1].equalsIgnoreCase("entity")) {
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("give") && args[1].equalsIgnoreCase("entity")) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 completions.add(p.getName());
             }
@@ -655,29 +652,51 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
                 if ("PLAYER".equals(headType)) {
                     meta.setDisplayName("§b" + headOwner + "'s Head");
-                } else {
-                    String colorCode = getMobColorCode(EntityType.valueOf(headType));
-                    meta.setDisplayName(colorCode + headOwner + " Head");
+                } else if (headType != null) {
+                    try {
+                        EntityType entityType = EntityType.valueOf(headType);
+                        String colorCode = getMobColorCode(entityType);
+                        meta.setDisplayName(colorCode + headOwner + " Head");
+                    } catch (IllegalArgumentException e) {
+                        meta.setDisplayName("§f" + headOwner + " Head");
+                    }
                 }
 
-                if (loreData != null) {
+                if (loreData != null && !loreData.isEmpty()) {
                     List<String> lore = new ArrayList<>(Arrays.asList(loreData.split("\\|")));
                     meta.setLore(lore);
                 }
 
                 meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, headOwner);
-                meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer);
-                meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, headType);
-                meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+                if (killer != null) {
+                    meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer);
+                }
+                if (headType != null) {
+                    meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, headType);
+                }
+                if (loreData != null) {
+                    meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+                }
 
-                event.getPlayer().sendMessage("§eThis head belonged to: " + headOwner);
+                for (NamespacedKey key : skull.getPersistentDataContainer().getKeys()) {
+                    if (!meta.getPersistentDataContainer().has(key, PersistentDataType.STRING)) {
+                        String value = skull.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+                        if (value != null) {
+                            meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, value);
+                        }
+                    }
+                }
 
                 item.setItemMeta(meta);
             }
 
+            event.getPlayer().sendMessage("§eThis head belonged to: " +
+                    skull.getPersistentDataContainer().get(headOwnerKey, PersistentDataType.STRING));
+
             block.getWorld().dropItemNaturally(block.getLocation(), item);
         }
     }
+
     private ItemStack createPlayerHead(Player victim, Player killer) {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -789,7 +808,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     }
 
     private String getProfileName(EntityType entityType) {
-        String name = entityType.name().toLowerCase();
+        String name = entityType.name().toLowerCase().replace("_", "");
         return name.substring(0, 1).toUpperCase() + name.substring(1);
     }
 
@@ -915,9 +934,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
         }, 40L);
     }
-
-
-
 }
 
 
