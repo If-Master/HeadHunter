@@ -1,8 +1,24 @@
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
+# bedrock-use-alternative-blocks: true # Note this ain't important I forgot to delete this part from the code
+
 
 # Enable/disable mob head drops on mob death
 mob-head-drops-enabled: false
+
+
+geyser:
+  # Enable enhanced Bedrock Edition support (requires Geyser plugin)
+  enabled: true
+
+  # Use custom model data for better Bedrock rendering
+  use-custom-model-data: true
+
+  # Send custom packets to Bedrock players for enhanced head display
+  enhanced-bedrock-rendering: true
+
+  # Fallback to basic head rendering if Geyser features fail
+  fallback-on-error: true
 
 # sound settings
 head-sound-effects:
