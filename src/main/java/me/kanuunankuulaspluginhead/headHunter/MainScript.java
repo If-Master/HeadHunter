@@ -31,9 +31,12 @@ import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.inventory.AnvilInventory;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private static boolean isFolia = false;
@@ -43,10 +46,22 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     public static String getCurrentVersion() {
         return instance != null ? instance.currentversion : "Unknown";
     }
+    private boolean playerHeadDropsEnabled;
+    private boolean mobHeadDropsEnabled;
+
+    private static final Map<EntityType, String> DISPLAY_NAME_CACHE = new EnumMap<>(EntityType.class);
+    private static final Map<EntityType, String> PROFILE_NAME_CACHE = new EnumMap<>(EntityType.class);
+    private static final Map<EntityType, String> COLOR_CODE_CACHE = new EnumMap<>(EntityType.class);
+    private static final Map<String, EntityType> ENTITY_TYPE_LOOKUP = new HashMap<>();
+
+    private static final Map<String, Boolean> PLAYER_EXISTENCE_CACHE = new ConcurrentHashMap<>();
+    private static final long CACHE_EXPIRY = 300000;
+    private static final Map<String, Long> CACHE_TIMESTAMPS = new ConcurrentHashMap<>();
+
 
 
     private boolean isUpdateAvailable = false;
-    private static MainScript instance;
+    static MainScript instance;
 
     public static FileConfiguration config;
     private final Random random = new Random();
@@ -55,6 +70,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private NamespacedKey killTimeKey;
     public static NamespacedKey headTypeKey;
     private NamespacedKey loreKey;
+    private ValidationMode validationMode;
 
     public static final Map<EntityType, String> mobTextures = new HashMap<>();
     private final Map<String, UUID> mobHeadUUIDs = new HashMap<>();
@@ -62,6 +78,11 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private File notificationsFile;
     private Map<UUID, Boolean> playerNotificationPreferences = new HashMap<>();
 
+    public enum ValidationMode {
+        SERVER_ONLY,
+        MOJANG_API,
+        DISABLED
+    }
 
     @EventHandler
     public void onPrepareAnvil(PrepareAnvilEvent event) {
@@ -187,13 +208,109 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
         }
         loadNotificationPreferences();
-
+        cacheConfigValues();
         getCommand("hh").setExecutor(this);
         getCommand("hh").setTabCompleter(this);
-
+        loadValidationSettings();
         UpdateChecker.checkForUpdates();
+        initializeCaches();
 
         getLogger().info("[HeadHunter] enabled");
+    }
+
+    private void loadValidationSettings() {
+        String mode = config.getString("player-validation.mode", "SERVER_ONLY").toUpperCase();
+        try {
+            validationMode = ValidationMode.valueOf(mode);
+        } catch (IllegalArgumentException e) {
+            getLogger().warning("Invalid validation mode: " + mode + ". Using SERVER_ONLY");
+            validationMode = ValidationMode.SERVER_ONLY;
+        }
+        getLogger().info("Player validation mode: " + validationMode);
+    }
+
+
+    private void cacheConfigValues() {
+        playerHeadDropsEnabled = config.getBoolean("player-head-drops-enabled", true);
+        mobHeadDropsEnabled = config.getBoolean("mob-head-drops-enabled", true);
+    }
+
+    private void validatePlayerMojangAPI(String playerName, Consumer<Boolean> callback) {
+        String lowerName = playerName.toLowerCase();
+        Long timestamp = CACHE_TIMESTAMPS.get(lowerName);
+        if (timestamp != null && System.currentTimeMillis() - timestamp < CACHE_EXPIRY) {
+            callback.accept(PLAYER_EXISTENCE_CACHE.get(lowerName));
+            return;
+        }
+
+        runAsync(() -> {
+            boolean exists = false;
+            try {
+                String apiUrl = "https://api.mojang.com/users/profiles/minecraft/" + playerName;
+                HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(3000);
+                connection.setRequestProperty("User-Agent", "HeadHunter-Plugin");
+
+                int responseCode = connection.getResponseCode();
+                exists = (responseCode == 200);
+
+                if (responseCode != 200 && responseCode != 404) {
+                    getLogger().warning("Unexpected response from Mojang API for player '" + playerName + "': " + responseCode);
+                }
+
+                connection.disconnect();
+            } catch (Exception e) {
+                getLogger().warning("Couldn't find profile with name: " + playerName);
+                exists = false;
+            }
+
+            PLAYER_EXISTENCE_CACHE.put(lowerName, exists);
+            CACHE_TIMESTAMPS.put(lowerName, System.currentTimeMillis());
+
+            boolean finalExists = exists;
+            runTask(null, () -> callback.accept(finalExists));
+        });
+    }
+
+
+    private void initializeCaches() {
+        for (EntityType type : EntityType.values()) {
+            if (type.isAlive() && mobTextures.containsKey(type)) {
+                String name = type.name().replace("_", " ").toLowerCase();
+                DISPLAY_NAME_CACHE.put(type, name.substring(0, 1).toUpperCase() + name.substring(1));
+
+                String profileName = type.name().toLowerCase().replace("_", "");
+                PROFILE_NAME_CACHE.put(type, profileName.substring(0, 1).toUpperCase() + profileName.substring(1));
+                ENTITY_TYPE_LOOKUP.put(type.name().toLowerCase(), type);
+
+                String colorCode = switch (type) {
+                    case SPIDER, CAVE_SPIDER, DROWNED, VEX, WITCH, BREEZE, BOGGED, EVOKER, SHULKER, SILVERFISH, STRAY -> "§c";
+                    case ILLUSIONER, CREAKING, GIANT -> "§9";
+                    case BLAZE, MAGMA_CUBE, WARDEN, ELDER_GUARDIAN, WITHER -> "§4";
+                    case ENDERMAN, GUARDIAN, ZOMBIFIED_PIGLIN, ENDERMITE, PHANTOM, PILLAGER -> "§5";
+                    case PIG, COW, SHEEP, CHICKEN, ALLAY, ARMADILLO, AXOLOTL, WOLF, COD, BEE, FOX, GOAT , CAT, BAT, CAMEL, DONKEY, FROG, GLOW_SQUID, HORSE, MOOSHROOM, MULE, OCELOT, PARROT, PUFFERFISH, RABBIT, SALMON, SKELETON_HORSE, SNIFFER, SQUID, STRIDER, TADPOLE, TROPICAL_FISH, TURTLE, WANDERING_TRADER, LLAMA, TRADER_LLAMA -> "§a";
+                    case VILLAGER, IRON_GOLEM, SNOW_GOLEM, ZOMBIE_VILLAGER, ZOMBIE_HORSE, PANDA, DOLPHIN, POLAR_BEAR -> "§b";
+                    case HOGLIN, ZOGLIN, PIGLIN_BRUTE, RAVAGER, HUSK, VINDICATOR  -> "§6";
+                    case SLIME -> "§2";
+                    default -> "§f";
+                };
+                COLOR_CODE_CACHE.put(type, colorCode);
+            }
+        }
+
+    }
+    public static String getDisplayName(EntityType entityType) {
+        return DISPLAY_NAME_CACHE.getOrDefault(entityType, entityType.name());
+    }
+
+    private String getProfileName(EntityType entityType) {
+        return PROFILE_NAME_CACHE.getOrDefault(entityType, entityType.name());
+    }
+
+    private String getMobColorCode(EntityType entityType) {
+        return COLOR_CODE_CACHE.getOrDefault(entityType, "§f");
     }
 
     public static void runAsync(Runnable task) {
@@ -230,6 +347,34 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
 
 
+    private boolean hasPlayerEverJoined(String playerName) {
+        try {
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
+            return offlinePlayer.hasPlayedBefore() || offlinePlayer.isOnline();
+        } catch (Exception e) {
+            getLogger().warning("Couldn't find profile with name: " + playerName);
+            return false;
+        }
+    }
+
+    private void validatePlayer(String playerName, Consumer<Boolean> callback) {
+        if (isLikelyBedrockPlayer(playerName)) {
+            callback.accept(hasPlayerEverJoined(playerName));
+            return;
+        }
+
+        switch (validationMode) {
+            case SERVER_ONLY:
+                callback.accept(hasPlayerEverJoined(playerName));
+                break;
+            case MOJANG_API:
+                validatePlayerMojangAPI(playerName, callback);
+                break;
+            case DISABLED:
+                callback.accept(true);
+                break;
+        }
+    }
 
 
 
@@ -239,6 +384,19 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             name = name.substring(0, 1).toUpperCase() + name.substring(1);
             mobHeadUUIDs.put(type.name(), UUID.nameUUIDFromBytes(("mobhead_" + type.name()).getBytes()));
         }
+    }
+    private boolean isLikelyBedrockPlayer(String playerName) {
+        String prefix = config.getString("geyser.prefix", ".");
+        if (playerName.startsWith(prefix)) {
+            return true;
+        }
+
+
+        if (playerName.contains(" ") || playerName.length() > 16) {
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -263,6 +421,8 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 }
                 reloadConfig();
                 config = getConfig();
+                cacheConfigValues();
+                loadValidationSettings();
                 sender.sendMessage("§aHeadHunter configuration reloaded!");
                 break;
 
@@ -418,13 +578,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             return;
         }
 
-        EntityType entityType = null;
-        for (EntityType et : EntityType.values()) {
-            if (et.name().toLowerCase().equals(mobName)) {
-                entityType = et;
-                break;
-            }
-        }
+        EntityType entityType = ENTITY_TYPE_LOOKUP.get(mobName.toLowerCase());
 
         if (entityType == null) {
             sender.sendMessage("§cUnknown mob type: " + mobName);
@@ -456,44 +610,33 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 return;
             }
             String playerName = args[2];
-            Player targetPlayer = Bukkit.getPlayer(playerName);
 
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta meta = (SkullMeta) head.getItemMeta();
-            if (meta != null) {
-                if (targetPlayer != null) {
-                    meta.setOwningPlayer(targetPlayer);
-                } else {
-                    meta.setOwningPlayer(Bukkit.getOfflinePlayer(playerName));
-                }
-                meta.setDisplayName("§f" + playerName + "'s Head");
-
-                List<String> lore = new ArrayList<>();
-                lore.add("§7Spawned by: §e" + player.getName());
-                meta.setLore(lore);
-
-                meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, playerName);
-                meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
-                meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, "PLAYER");
-
-                String loreData = String.join("|", lore);
-                meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
-
-                head.setItemMeta(meta);
+            if (validationMode == ValidationMode.DISABLED) {
+                createAndGivePlayerHead(player, playerName);
+                return;
+            }
+            if (validationMode == ValidationMode.MOJANG_API) {
+                player.sendMessage("§7Validating player...");
             }
 
-            player.getInventory().addItem(head);
-            player.sendMessage("§aSpawned " + playerName + "'s head!");
+            validatePlayer(playerName, exists -> {
+                if (!exists) {
+                    String message = switch (validationMode) {
+                        case SERVER_ONLY -> "§cPlayer '" + playerName + "' has never joined this server!";
+                        case MOJANG_API -> "§cPlayer '" + playerName + "' does not exist on Mojang servers!";
+                        default -> "";
+                    };
+                    player.sendMessage(message);
+                    player.sendMessage("§7Tip: Check the spelling or use a different validation mode in config.");
+                    return;
+                }
+
+                createAndGivePlayerHead(player, playerName);
+            });
 
         } else if (type.equals("entity")) {
-            EntityType entityType = null;
             String MobName2 = args[2];
-            for (EntityType et : EntityType.values()) {
-                if (et.name().toLowerCase().equals(MobName2)) {
-                    entityType = et;
-                    break;
-                }
-            }
+            EntityType entityType = ENTITY_TYPE_LOOKUP.get(MobName2.toLowerCase());
 
             if (entityType == null || !mobTextures.containsKey(entityType)) {
                 player.sendMessage("§cUnknown mob type: " + MobName2);
@@ -503,10 +646,38 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             ItemStack head = createSpawnedMobHead(entityType, player.getName(), player.getName());
             player.getInventory().addItem(head);
 
-            String mobName = entityType.name().replace("_", " ").toLowerCase();
-            mobName = mobName.substring(0, 1).toUpperCase() + mobName.substring(1);
+            String mobName = getDisplayName(entityType);
             player.sendMessage("§aSpawned " + mobName + " head!");
         }
+    }
+    private void createAndGivePlayerHead(Player player, String playerName) {
+        Player targetPlayer = Bukkit.getPlayer(playerName);
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        if (meta != null) {
+            if (targetPlayer != null) {
+                meta.setOwningPlayer(targetPlayer);
+            } else {
+                meta.setOwningPlayer(Bukkit.getOfflinePlayer(playerName));
+            }
+            meta.setDisplayName("§f" + playerName + "'s Head");
+
+            List<String> lore = new ArrayList<>();
+            lore.add("§7Spawned by: §e" + player.getName());
+            meta.setLore(lore);
+
+            meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, playerName);
+            meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
+            meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, "PLAYER");
+
+            String loreData = String.join("|", lore);
+            meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+
+            head.setItemMeta(meta);
+        }
+
+        player.getInventory().addItem(head);
+        player.sendMessage("§aSpawned " + playerName + "'s head!");
     }
 
     private void purchaseHead(CommandSender sender, String[] args) {
@@ -521,13 +692,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             String mobName = args[2].toLowerCase();
             String playerName = args[3];
 
-            EntityType entityType = null;
-            for (EntityType et : EntityType.values()) {
-                if (et.name().toLowerCase().equals(mobName)) {
-                    entityType = et;
-                    break;
-                }
-            }
+            EntityType entityType = ENTITY_TYPE_LOOKUP.get(mobName.toLowerCase());
 
             if (entityType == null || !mobTextures.containsKey(entityType)) {
                 sender.sendMessage("§cInvalid or unsupported mob type.");
@@ -558,22 +723,52 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
     }
     private void queueHeadForPlayer(UUID playerUUID, ItemStack headItem) {
-        File file = new File(getDataFolder(), "queued_heads.yml");
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-
         String serializedItem = ItemSerializer.serialize(headItem);
+        if (serializedItem == null) return;
 
-        List<String> list = config.getStringList(playerUUID.toString());
-        list.add(serializedItem);
-        config.set(playerUUID.toString(), list);
+        queuedHeadsMemory.computeIfAbsent(playerUUID, k -> new ArrayList<>()).add(serializedItem);
 
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (!flushScheduled) {
+            flushScheduled = true;
+            runLater(null, this::flushQueuedHeadsToDisk, 600L);
         }
     }
 
+    private final Map<UUID, List<String>> queuedHeadsMemory = new ConcurrentHashMap<>();
+    private volatile boolean flushScheduled = false;
+
+    private void flushQueuedHeadsToDisk() {
+        if (queuedHeadsMemory.isEmpty()) {
+            flushScheduled = false;
+            return;
+        }
+
+        runAsync(() -> {
+            File file = new File(getDataFolder(), "queued_heads.yml");
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+
+            synchronized (queuedHeadsMemory) {
+                for (Map.Entry<UUID, List<String>> entry : queuedHeadsMemory.entrySet()) {
+                    List<String> existing = config.getStringList(entry.getKey().toString());
+                    existing.addAll(entry.getValue());
+                    config.set(entry.getKey().toString(), existing);
+                }
+                queuedHeadsMemory.clear();
+            }
+
+            try {
+                config.save(file);
+            } catch (IOException e) {
+                getLogger().warning("Failed to flush queued heads: " + e.getMessage());
+            }
+
+            flushScheduled = false;
+        });
+    }
+    private static final Map<String, UUID> UUID_CACHE = new ConcurrentHashMap<>();
+    private UUID getCachedUUID(String key) {
+        return UUID_CACHE.computeIfAbsent(key, k -> UUID.nameUUIDFromBytes(k.getBytes()));
+    }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
@@ -585,6 +780,18 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             ItemStack head = createPlayerHead(victim, killer);
             victim.getWorld().dropItemNaturally(victim.getLocation(), head);
         }
+    }
+    @Override
+    public void onDisable() {
+        flushQueuedHeadsToDisk();
+
+        ItemSerializer.clearCache();
+        UUID_CACHE.clear();
+        queuedHeadsMemory.clear();
+        PLAYER_EXISTENCE_CACHE.clear();
+        CACHE_TIMESTAMPS.clear();
+
+        getLogger().info("[HeadHunter] disabled");
     }
 
     @EventHandler
@@ -739,7 +946,8 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
             if (mobTextures.containsKey(entityType)) {
                 try {
-                    UUID headUUID = UUID.nameUUIDFromBytes((entityType.name() + "_" + killer.getName()).getBytes());
+                    UUID headUUID = getCachedUUID(entityType.name() + "_" + killer.getName());
+
                     PlayerProfile profile = Bukkit.createPlayerProfile(headUUID, profileName);
                     PlayerTextures textures = profile.getTextures();
                     textures.setSkin(new URL(mobTextures.get(entityType)));
@@ -782,8 +990,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
             if (mobTextures.containsKey(entityType)) {
                 try {
-                    UUID headUUID = UUID.nameUUIDFromBytes(("spawned_" + entityType.name() + "_" + spawner).getBytes());
-                    PlayerProfile profile = Bukkit.createPlayerProfile(headUUID, profileName);
+                    UUID headUUID = getCachedUUID("spawned_" + entityType.name() + "_" + spawner);                    PlayerProfile profile = Bukkit.createPlayerProfile(headUUID, profileName);
                     PlayerTextures textures = profile.getTextures();
                     textures.setSkin(new URL(mobTextures.get(entityType)));
                     profile.setTextures(textures);
@@ -802,15 +1009,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         return head;
     }
 
-    public static String getDisplayName(EntityType entityType) {
-        String name = entityType.name().replace("_", " ").toLowerCase();
-        return name.substring(0, 1).toUpperCase() + name.substring(1);
-    }
-
-    private String getProfileName(EntityType entityType) {
-        String name = entityType.name().toLowerCase().replace("_", "");
-        return name.substring(0, 1).toUpperCase() + name.substring(1);
-    }
 
     public static void setUpdateAvailable(boolean available, String version) {
         if (instance != null) {
@@ -877,19 +1075,25 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
         return 0;
     }
+    private static String formatMobName(EntityType entityType) {
+        String name = entityType.name();
+        StringBuilder sb = new StringBuilder(name.length() + 2);
 
-    private String getMobColorCode(EntityType entityType) {
-        return switch (entityType) {
-            case SPIDER, CAVE_SPIDER, DROWNED, VEX, WITCH, BREEZE, BOGGED, EVOKER, SHULKER, SILVERFISH, STRAY -> "§c";
-            case ILLUSIONER, CREAKING, GIANT -> "§9";
-            case BLAZE, MAGMA_CUBE, WARDEN, ELDER_GUARDIAN, WITHER -> "§4";
-            case ENDERMAN, GUARDIAN, ZOMBIFIED_PIGLIN, ENDERMITE, PHANTOM, PILLAGER -> "§5";
-            case PIG, COW, SHEEP, CHICKEN, ALLAY, ARMADILLO, AXOLOTL, WOLF, COD, BEE, FOX, GOAT , CAT, BAT, CAMEL, DONKEY, FROG, GLOW_SQUID, HORSE, MOOSHROOM, MULE, OCELOT, PARROT, PUFFERFISH, RABBIT, SALMON, SKELETON_HORSE, SNIFFER, SQUID, STRIDER, TADPOLE, TROPICAL_FISH, TURTLE, WANDERING_TRADER, LLAMA, TRADER_LLAMA -> "§a";
-            case VILLAGER, IRON_GOLEM, SNOW_GOLEM, ZOMBIE_VILLAGER, ZOMBIE_HORSE, PANDA, DOLPHIN, POLAR_BEAR -> "§b";
-            case HOGLIN, ZOGLIN, PIGLIN_BRUTE, RAVAGER, HUSK, VINDICATOR  -> "§6";
-            case SLIME -> "§2";
-            default -> "§f";
-        };
+        boolean capitalize = true;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c == '_') {
+                sb.append(' ');
+                capitalize = true;
+            } else if (capitalize) {
+                sb.append(Character.toUpperCase(c));
+                capitalize = false;
+            } else {
+                sb.append(Character.toLowerCase(c));
+            }
+        }
+
+        return sb.toString();
     }
 
     @EventHandler
@@ -934,6 +1138,16 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
         }, 40L);
     }
+
+
+    public static void runTaskForPlayer(Player player, Runnable task) {
+        if (isFolia) {
+            Bukkit.getRegionScheduler().run(instance, player.getLocation(), (t) -> task.run());
+        } else {
+            Bukkit.getScheduler().runTask(instance, task);
+        }
+    }
+
 }
 
 
