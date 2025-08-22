@@ -1,24 +1,27 @@
+player-validation:
+  # Validation mode options:
+  # SERVER_ONLY - Only allow heads for players who have joined this server
+  # MOJANG_API - Check Mojang API to validate real Minecraft accounts (fastest, no server requirement)
+  # DISABLED - Allow any player name (no validation)
+  mode: "MOJANG_API"
+
+  # Cache validation results to improve performance (recommended: true)
+  cache-results: true
+
+  # How long to cache validation results in minutes (recommended: 5-15)
+  cache-duration: 5
+
+
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
-# bedrock-use-alternative-blocks: true # Note this ain't important I forgot to delete this part from the code
-
 
 # Enable/disable mob head drops on mob death
 mob-head-drops-enabled: false
 
 
 geyser:
-  # Enable enhanced Bedrock Edition support (requires Geyser plugin)
-  enabled: true
-
-  # Use custom model data for better Bedrock rendering
-  use-custom-model-data: true
-
-  # Send custom packets to Bedrock players for enhanced head display
-  enhanced-bedrock-rendering: true
-
-  # Fallback to basic head rendering if Geyser features fail
-  fallback-on-error: true
+  # Enter the prefix for the bedrock clients
+  prefix: "."
 
 # sound settings
 head-sound-effects:
