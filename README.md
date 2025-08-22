@@ -2,16 +2,35 @@
 
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
-Current version: `1.21.5.015` 
+Current version: `2.0.2` 
 API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
 ```
+player-validation:
+  # Validation mode options:
+  # SERVER_ONLY - Only allow heads for players who have joined this server
+  # MOJANG_API - Check Mojang API to validate real Minecraft accounts (fastest, no server requirement)
+  # DISABLED - Allow any player name (no validation)
+  mode: "MOJANG_API"
+
+  # Cache validation results to improve performance (recommended: true)
+  cache-results: true
+
+  # How long to cache validation results in minutes (recommended: 5-15)
+  cache-duration: 5
+
+
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
 
 # Enable/disable mob head drops on mob death
 mob-head-drops-enabled: false
+
+
+geyser:
+  # Enter the prefix for the bedrock clients
+  prefix: "."
 
 # sound settings
 head-sound-effects:
@@ -24,7 +43,7 @@ head-sound-effects:
   # Show particle effects when sounds play
   particles: true
 
-  # Send chat messages when animal sounds play ( Wouldn't recommend it ngl ) 
+  # Send chat messages when animal sounds play
   messages: false
 
   # Volume for the animal sounds (0.1 to 2.0)
@@ -33,7 +52,7 @@ head-sound-effects:
   # Pitch for the animal sounds (0.5 to 2.0)
   pitch: 1.0
 
-# Drop chances for mob heads (percent) Change these to your preferred choice
+# Drop chances for mob heads (percent)
 mob-head-drop-chances:
   spider: 10.0
   cave_spider: 10.0
@@ -110,6 +129,7 @@ mob-head-drop-chances:
   dolphin: 5.0
   polar_bear: 5.0
   vindicator: 12.0
+
 ```
 
 Permissions:
