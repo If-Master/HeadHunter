@@ -1,10 +1,14 @@
 name: HeadHunter
-version: '2.0.2'
+version: '2.0.3'
 main: me.kanuunankuulaspluginhead.headHunter.MainScript
 api-version: '1.21'
 description: A plugin that drops player and mob heads when killed
 author: Kanuunankuula
+folia-supported: true
 
+softdepend: [Geyser-Spigot, ViaVersion, ProtocolLib]
+
+loadbefore: [Geyser-Spigot]
 
 commands:
   hh:
