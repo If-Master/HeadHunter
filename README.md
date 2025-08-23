@@ -20,6 +20,17 @@ player-validation:
   # How long to cache validation results in minutes (recommended: 5-15)
   cache-duration: 5
 
+skin-fetching:
+  enabled: true
+  cache-duration-minutes: 60
+  timeout-seconds: 5
+  fallback-to-default: true
+
+bedrock-compatibility: # Note like it will not really disply in their inventory due to the fact of Geyser has no official way to texture it in their inventory sadly
+  enabled: true
+  force-refresh-textures: true
+  use-mojang-fallback: true
+
 
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
@@ -129,6 +140,7 @@ mob-head-drop-chances:
   dolphin: 5.0
   polar_bear: 5.0
   vindicator: 12.0
+
 
 ```
 
