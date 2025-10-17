@@ -2,7 +2,7 @@
 
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
-Current version: `2.0.2` 
+Current version: `2.0.4` 
 API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
@@ -26,7 +26,7 @@ skin-fetching:
   timeout-seconds: 5
   fallback-to-default: true
 
-bedrock-compatibility: # Note like it will not really disply in their inventory due to the fact of Geyser has no official way to texture it in their inventory sadly
+bedrock-compatibility: # Won’t display in inventory due to Geyser limitations.
   enabled: true
   force-refresh-textures: true
   use-mojang-fallback: true
@@ -34,6 +34,9 @@ bedrock-compatibility: # Note like it will not really disply in their inventory 
 
 # Enable/disable player head drops on player death
 player-head-drops-enabled: true
+
+# Enable/disable player head drops on player death
+allow_mannequin_skin: true
 
 # Enable/disable mob head drops on mob death
 mob-head-drops-enabled: false
@@ -140,8 +143,9 @@ mob-head-drop-chances:
   dolphin: 5.0
   polar_bear: 5.0
   vindicator: 12.0
-
-
+  mannequin: 12.0
+  copper_golem: 13.0
+  happy_ghast: 39.0
 ```
 
 Permissions:
