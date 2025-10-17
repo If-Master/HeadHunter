@@ -15,7 +15,10 @@ public class AnimalData {
             case MULE -> Sound.ENTITY_MULE_AMBIENT;
             case LLAMA -> Sound.ENTITY_LLAMA_AMBIENT;
             case TRADER_LLAMA -> Sound.ENTITY_LLAMA_AMBIENT;
+            case HAPPY_GHAST -> Sound.ENTITY_HAPPY_GHAST_HURT;
             case MOOSHROOM -> Sound.ENTITY_COW_AMBIENT;
+            case COPPER_GOLEM -> Sound.ENTITY_COPPER_GOLEM_HURT;
+            case MANNEQUIN -> Sound.ENTITY_PLAYER_BURP;
             case GOAT -> Sound.ENTITY_GOAT_AMBIENT;
             case PLAYER -> Sound.ENTITY_PLAYER_BREATH;
             case CREAKING -> Sound.ENTITY_CREAKING_AMBIENT;
@@ -144,9 +147,6 @@ public class AnimalData {
         MainScript.mobTextures.put(EntityType.COD, "http://textures.minecraft.net/texture/7892d7dd6aadf35f86da27fb63da4edda211df96d2829f691462a4fb1cab0");
 
 
-        /* =====================
-*            Neutral mobs
-        ===================== */
 
 
         MainScript.mobTextures.put(EntityType.WOLF, "http://textures.minecraft.net/texture/8f0b221786f193c06dd19a7875a903635113f84523927bb69764237fe20703de");
@@ -159,9 +159,6 @@ public class AnimalData {
         MainScript.mobTextures.put(EntityType.HOGLIN, "http://textures.minecraft.net/texture/7ad7b5aeb220c079e319cd70ac8800e80774a9313c22f38e77afb89999e6ec87");
         MainScript.mobTextures.put(EntityType.ZOGLIN, "http://textures.minecraft.net/texture/e67e18602e03035ad68967ce090235d8996663fb9ea47578d3a7ebbc42a5ccf9");
 
-        /* =====================
-                Hostile mobs
-        ===================== */
         MainScript.mobTextures.put(EntityType.ZOMBIE_VILLAGER, "http://textures.minecraft.net/texture/8c7505f224d5164a117d8c69f015f99eff434471c8a2df907096c4242c3524e8");
         MainScript.mobTextures.put(EntityType.HUSK, "http://textures.minecraft.net/texture/9b9da6b8d06cd28d441398b96766c3b4f370de85c7898205e5c429f178a24597");
         MainScript.mobTextures.put(EntityType.DROWNED, "http://textures.minecraft.net/texture/c84df79c49104b198cdad6d99fd0d0bcf1531c92d4ab6269e40b7d3cbbb8e98c");
@@ -189,9 +186,6 @@ public class AnimalData {
         MainScript.mobTextures.put(EntityType.ZOMBIFIED_PIGLIN, "http://textures.minecraft.net/texture/7eabaecc5fae5a8a49c8863ff4831aaa284198f1a2398890c765e0a8de18da8c");
         MainScript.mobTextures.put(EntityType.ENDERMITE, "http://textures.minecraft.net/texture/5a1a0831aa03afb4212adcbb24e5dfaa7f476a1173fce259ef75a85855");
 
-// =====================
-// Utility / Friendly Constructs
-// =====================
         MainScript.mobTextures.put(EntityType.IRON_GOLEM, "http://textures.minecraft.net/texture/da6e0429ccaabb6f5f0c5d513c795bed6d80fce72f57f4bc3a616aee23e12572");
         MainScript.mobTextures.put(EntityType.SNOW_GOLEM, "http://textures.minecraft.net/texture/e6f20aec528c3968dd8164f9d9336b081b3a2c7ecf189cf73df6f925e5a4ed14");
         MainScript.mobTextures.put(EntityType.ALLAY, "http://textures.minecraft.net/texture/df5de940bfe499c59ee8dac9f9c3919e7535eff3a9acb16f4842bf290f4c679f");
@@ -200,10 +194,11 @@ public class AnimalData {
         MainScript.mobTextures.put(EntityType.VILLAGER, "http://textures.minecraft.net/texture/350ba6b7690363737a46c85a2795058ff166eb20a7b5c9fa3fb2b391199822d2");
         MainScript.mobTextures.put(EntityType.WANDERING_TRADER, "http://textures.minecraft.net/texture/ee011aac817259f2b48da3e5ef266094703866608b3d7d1754432bf249cd2234");
 
-// =====================
-// Bosses
-// =====================
         MainScript.mobTextures.put(EntityType.WITHER, "http://textures.minecraft.net/texture/63b6bb53e33db2c19ae88b5ce7e24e8b5f3137c411b4f704f0aebd5deee15694");
+
+        MainScript.mobTextures.put(EntityType.HAPPY_GHAST, "http://textures.minecraft.net/texture/504843421c218d0634455fdb1a6c5f7ae5b85098a50b12b9ed9d9310c84dc61b");
+        MainScript.mobTextures.put(EntityType.MANNEQUIN, "http://textures.minecraft.net/texture/19f85bf314b9cd52184555cf4ddd71c97552ad237a6746096b33455c221741");
+        MainScript.mobTextures.put(EntityType.COPPER_GOLEM, "http://textures.minecraft.net/texture/8711e2559a65891eff3f56dec0a132b95b37600f9c68ca2d71a24c91c427499f");
 
     }
 
