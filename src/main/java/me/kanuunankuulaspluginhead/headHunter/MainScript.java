@@ -64,6 +64,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private boolean playerHeadDropsEnabled;
     private boolean mobHeadDropsEnabled;
     private volatile boolean flushScheduled = false;
+    private boolean allowMannequinSkin;
 
 
     // Others
@@ -184,6 +185,11 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         Player killer = entity.getKiller();
         if (killer != null && !(entity instanceof Player)) {
             if (!mobHeadDropsEnabled) { return; }
+
+            if (entity.getType() == EntityType.MANNEQUIN) {
+                handleMannequinDeath(entity, killer);
+                return;
+            }
 
             String type = entity.getType().name().toLowerCase();
             double chance = config.getDouble("mob-head-drop-chances." + type, 0);
@@ -588,6 +594,8 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private void cacheConfigValues() {
         playerHeadDropsEnabled = config.getBoolean("player-head-drops-enabled", true);
         mobHeadDropsEnabled = config.getBoolean("mob-head-drops-enabled", true);
+        allowMannequinSkin = config.getBoolean("allow_mannequin_skin", true);
+
     }
 
     // Validators
@@ -622,28 +630,28 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 exists = false;
             }
 
-            PLAYER_EXISTENCE_CACHE.put(lowerName, exists);
-            CACHE_TIMESTAMPS.put(lowerName, System.currentTimeMillis());
+            PLAYER_EXISTENCE_CACHE.put(lowerName, Boolean.valueOf(exists));
+            CACHE_TIMESTAMPS.put(lowerName, Long.valueOf(System.currentTimeMillis()));
 
             boolean finalExists = exists;
-            runTask(null, () -> callback.accept(finalExists));
+            runTask(null, () -> callback.accept(Boolean.valueOf(finalExists)));
         });
     }
     private void validatePlayer(String playerName, Consumer<Boolean> callback) {
         if (isLikelyBedrockPlayer(playerName)) {
-            callback.accept(hasPlayerEverJoined(playerName));
+            callback.accept(Boolean.valueOf(hasPlayerEverJoined(playerName)));
             return;
         }
 
         switch (validationMode) {
             case SERVER_ONLY:
-                callback.accept(hasPlayerEverJoined(playerName));
+                callback.accept(Boolean.valueOf(hasPlayerEverJoined(playerName)));
                 break;
             case MOJANG_API:
                 validatePlayerMojangAPI(playerName, callback);
                 break;
             case DISABLED:
-                callback.accept(true);
+                callback.accept(Boolean.valueOf(true));
                 break;
         }
     }
@@ -684,10 +692,12 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
                 String colorCode = switch (type) {
                     case SPIDER, CAVE_SPIDER, DROWNED, VEX, WITCH, BREEZE, BOGGED, EVOKER, SHULKER, SILVERFISH, STRAY -> "§c";
-                    case ILLUSIONER, CREAKING, GIANT -> "§9";
+                    case ILLUSIONER, CREAKING, GIANT, MANNEQUIN -> "§9";
                     case BLAZE, MAGMA_CUBE, WARDEN, ELDER_GUARDIAN, WITHER -> "§4";
                     case ENDERMAN, GUARDIAN, ZOMBIFIED_PIGLIN, ENDERMITE, PHANTOM, PILLAGER -> "§5";
-                    case PIG, COW, SHEEP, CHICKEN, ALLAY, ARMADILLO, AXOLOTL, WOLF, COD, BEE, FOX, GOAT , CAT, BAT, CAMEL, DONKEY, FROG, GLOW_SQUID, HORSE, MOOSHROOM, MULE, OCELOT, PARROT, PUFFERFISH, RABBIT, SALMON, SKELETON_HORSE, SNIFFER, SQUID, STRIDER, TADPOLE, TROPICAL_FISH, TURTLE, WANDERING_TRADER, LLAMA, TRADER_LLAMA -> "§a";
+                    case PIG, COW, SHEEP, CHICKEN, ALLAY, ARMADILLO, AXOLOTL, WOLF, COD, BEE, FOX, GOAT , CAT, BAT, CAMEL, DONKEY, FROG, GLOW_SQUID, HORSE,
+                         MOOSHROOM, MULE, OCELOT, PARROT, PUFFERFISH, RABBIT, SALMON, SKELETON_HORSE, SNIFFER, SQUID, STRIDER, TADPOLE, TROPICAL_FISH, TURTLE,
+                         WANDERING_TRADER, LLAMA, TRADER_LLAMA, COPPER_GOLEM, HAPPY_GHAST  -> "§a";
                     case VILLAGER, IRON_GOLEM, SNOW_GOLEM, ZOMBIE_VILLAGER, ZOMBIE_HORSE, PANDA, DOLPHIN, POLAR_BEAR -> "§b";
                     case HOGLIN, ZOGLIN, PIGLIN_BRUTE, RAVAGER, HUSK, VINDICATOR  -> "§6";
                     case SLIME -> "§2";
@@ -752,6 +762,115 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     }
 
     // Heads stuff
+    private void handleMannequinDeath(LivingEntity mannequin, Player killer) {
+        String type = mannequin.getType().name().toLowerCase();
+        double chance = config.getDouble("mob-head-drop-chances." + type, 0);
+
+        if (random.nextDouble() * 100 >= chance) {
+            return;
+        }
+
+        String profileName = mannequin.getCustomName();
+        if (profileName != null) {
+            profileName = ChatColor.stripColor(profileName);
+        }
+
+//        getLogger().info("[HeadHunter] Mannequin killed with profile: " + profileName);
+        if (profileName == null) {
+            ItemStack head = createMobHead(mannequin, killer);
+            mannequin.getWorld().dropItemNaturally(mannequin.getLocation(), head);
+            return;
+        }
+
+        if (allowMannequinSkin && profileName != null && !profileName.isEmpty()) {
+            Location dropLocation = mannequin.getLocation();
+
+            String finalProfileName = profileName;
+            runAsync(() -> {
+                ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+                SkullMeta meta = (SkullMeta) head.getItemMeta();
+
+                if (meta != null) {
+                    String colorCode = getMobColorCode(EntityType.MANNEQUIN);
+                    meta.setDisplayName(colorCode + "Mannequin Head");
+
+                    try {
+                        PlayerProfile profile = Bukkit.createPlayerProfile(finalProfileName);
+                        profile.update().thenAccept(updatedProfile -> {
+                            runTask(dropLocation, () -> {
+                                if (updatedProfile.getTextures().getSkin() != null) {
+                                    meta.setOwnerProfile(updatedProfile);
+                                    getLogger().info("[HeadHunter] Successfully applied skin for: " + finalProfileName);
+                                } else {
+                                    getLogger().warning("[HeadHunter] No skin found for profile: " + finalProfileName);
+                                }
+
+                                List<String> lore = new ArrayList<>();
+                                lore.add("§7Mannequin of: " + finalProfileName);
+                                lore.add("§7Killed by: §c" + killer.getName());
+                                meta.setLore(lore);
+
+                                String loreData = String.join("|", lore);
+                                meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, "Mannequin");
+                                meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer.getName());
+                                meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, EntityType.MANNEQUIN.name());
+                                meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+                                head.setItemMeta(meta);
+
+                                dropLocation.getWorld().dropItemNaturally(dropLocation, head);
+                            });
+                        });
+                        return;
+                    } catch (Exception e) {
+                        getLogger().warning("[HeadHunter] Failed to fetch skin for " + finalProfileName + ": " + e.getMessage());
+
+                        List<String> lore = new ArrayList<>();
+                        lore.add("§7Mannequin of: " + finalProfileName);
+                        lore.add("§7Killed by: §c" + killer.getName());
+                        meta.setLore(lore);
+
+                        String loreData = String.join("|", lore);
+                        meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, "Mannequin");
+                        meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer.getName());
+                        meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, EntityType.MANNEQUIN.name());
+                        meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+                        head.setItemMeta(meta);
+
+                        runTask(dropLocation, () -> {
+                            dropLocation.getWorld().dropItemNaturally(dropLocation, head);
+                        });
+                    }
+                } else {
+                    ItemStack head2 = new ItemStack(Material.PLAYER_HEAD);
+                    SkullMeta meta2 = (SkullMeta) head2.getItemMeta();
+
+                    if (meta2 != null) {
+                        String colorCode = getMobColorCode(EntityType.MANNEQUIN);
+                        meta2.setDisplayName(colorCode + "Mannequin Head");
+
+                        List<String> lore = new ArrayList<>();
+                        if (!allowMannequinSkin) {
+                            lore.add("§7Mannequin (default skin)");
+                        } else {
+                            lore.add("§7Mannequin");
+                        }
+                        lore.add("§7Killed by: §c" + killer.getName());
+                        meta2.setLore(lore);
+
+                        String loreData = String.join("|", lore);
+                        meta2.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, "Mannequin");
+                        meta2.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer.getName());
+                        meta2.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, EntityType.MANNEQUIN.name());
+                        meta2.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+                        head.setItemMeta(meta2);
+                    }
+
+                    mannequin.getWorld().dropItemNaturally(mannequin.getLocation(), head);
+                }
+            } );
+        }
+    }
+
     public static void createAndGivePlayerHead(Player player, String playerName) {
         Player targetPlayer = Bukkit.getPlayer(playerName);
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
@@ -857,21 +976,28 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 lore.add("§7Spawned by: §e" + spawner);
             } else {
                 lore.add("§7Was given to: §e" + targetName);
-
             }
+
+            if (entityType == EntityType.MANNEQUIN && !allowMannequinSkin) {
+                lore.add("§7Default Steve skin");
+            }
+
             meta.setLore(lore);
 
             String loreData = String.join("|", lore);
 
-            if (mobTextures.containsKey(entityType)) {
-                try {
-                    UUID headUUID = getCachedUUID("spawned_" + entityType.name() + "_" + spawner);                    PlayerProfile profile = Bukkit.createPlayerProfile(headUUID, profileName);
-                    PlayerTextures textures = profile.getTextures();
-                    textures.setSkin(new URL(mobTextures.get(entityType)));
-                    profile.setTextures(textures);
-                    meta.setOwnerProfile(profile);
-                } catch (MalformedURLException e) {
-                    getLogger().warning("Invalid texture URL for " + entityType + ": " + e.getMessage());
+            if (entityType != EntityType.MANNEQUIN || allowMannequinSkin) {
+                if (mobTextures.containsKey(entityType)) {
+                    try {
+                        UUID headUUID = getCachedUUID("spawned_" + entityType.name() + "_" + spawner);
+                        PlayerProfile profile = Bukkit.createPlayerProfile(headUUID, profileName);
+                        PlayerTextures textures = profile.getTextures();
+                        textures.setSkin(new URL(mobTextures.get(entityType)));
+                        profile.setTextures(textures);
+                        meta.setOwnerProfile(profile);
+                    } catch (MalformedURLException e) {
+                        getLogger().warning("Invalid texture URL for " + entityType + ": " + e.getMessage());
+                    }
                 }
             }
 
@@ -883,6 +1009,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
         return head;
     }
+
     private void purchaseHeadConsole(CommandSender sender, String[] args) {
         if (args.length < 4) {
             sender.sendMessage("§cUsage: /hh give entity <mob> <playerName>");
@@ -1076,7 +1203,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 if (parts.length == 2) {
                     UUID uuid = UUID.fromString(parts[0].replace("Userid: ", "").trim());
                     boolean enabled = parts[1].trim().equalsIgnoreCase("Enabled");
-                    playerNotificationPreferences.put(uuid, enabled);
+                    playerNotificationPreferences.put(uuid, Boolean.valueOf(enabled));
                 }
             }
         } catch (IOException e) {
@@ -1093,10 +1220,10 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
     }
     public boolean isNotificationsEnabled(UUID uuid) {
-        return playerNotificationPreferences.getOrDefault(uuid, true);
+        return playerNotificationPreferences.getOrDefault(uuid, Boolean.valueOf(true));
     }
     public void setNotificationsEnabled(UUID uuid, boolean enabled) {
-        playerNotificationPreferences.put(uuid, enabled);
+        playerNotificationPreferences.put(uuid, Boolean.valueOf(enabled));
         saveNotificationPreferences();
     }
 
