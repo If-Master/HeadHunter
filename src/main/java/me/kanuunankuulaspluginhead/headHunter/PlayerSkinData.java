@@ -148,7 +148,7 @@ public class PlayerSkinData {
 
                 if (skullData != null) {
                     skullManagerClass.getMethod("registerSkull", Object.class).invoke(skullManager, skullData);
-                    registeredSkulls.put(skullId, true);
+                    registeredSkulls.put(skullId, Boolean.valueOf(true));
 
                     Bukkit.getLogger().info("[HeadHunter] Registered skull for Bedrock: " + playerName);
                 }
@@ -232,7 +232,7 @@ public class PlayerSkinData {
         if (timestamp != null && System.currentTimeMillis() - timestamp < SKIN_CACHE_EXPIRY) {
             PlayerProfile cachedProfile = SKIN_CACHE.get(lowerName);
             if (cachedProfile != null) {
-                callback.accept(true, cachedProfile);
+                callback.accept(Boolean.valueOf(true), cachedProfile);
                 return;
             }
         }
@@ -244,7 +244,7 @@ public class PlayerSkinData {
                 String uuid = getUUIDFromMojang(playerName);
                 if (uuid == null) {
                     Bukkit.getLogger().warning("Failed to get UUID for: " + playerName);
-                    callback.accept(false, null);
+                    callback.accept(Boolean.valueOf(false), null);
                     return;
                 }
 
@@ -252,16 +252,16 @@ public class PlayerSkinData {
 
                 if (profile != null) {
                     SKIN_CACHE.put(lowerName, profile);
-                    SKIN_CACHE_TIMESTAMPS.put(lowerName, System.currentTimeMillis());
+                    SKIN_CACHE_TIMESTAMPS.put(lowerName, Long.valueOf(System.currentTimeMillis()));
                 } else {
                     Bukkit.getLogger().warning("Failed to get profile for: " + playerName);
                 }
 
-                callback.accept(profile != null, profile);
+                callback.accept(Boolean.valueOf(profile != null), profile);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                callback.accept(false, null);
+                callback.accept(Boolean.valueOf(false), null);
             }
         });
     }
