@@ -196,7 +196,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             return;
         }
 
-        if (type == EntityType.MANNEQUIN) {
+        if (type.name().equals("MANNEQUIN")) {
             handleMannequinDeath(entity, killer);
             return;
         }
