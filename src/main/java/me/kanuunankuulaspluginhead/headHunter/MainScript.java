@@ -1056,6 +1056,34 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             return null;
         }
 
+        Material vanillaHeadMaterial = getVanillaHeadMaterial(entityType);
+
+        if (vanillaHeadMaterial != null) {
+            ItemStack head = new ItemStack(vanillaHeadMaterial);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+
+            if (meta != null) {
+                String displayName = getDisplayName(entityType);
+                String colorCode = config.getString("entity-colors." + entityType.name().toLowerCase(),
+                        getMobColorCode(entityType));
+
+                meta.setDisplayName(colorCode + displayName + " Head");
+
+                List<String> lore = buildHeadLore(entity, killer, displayName);
+                meta.setLore(lore);
+
+                String loreData = String.join("|", lore);
+                meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, displayName);
+                meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, killer.getName());
+                meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, entityType.name());
+                meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+
+                head.setItemMeta(meta);
+            }
+
+            return head;
+        }
+
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
 
@@ -1089,6 +1117,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         head.setItemMeta(meta);
         return head;
     }
+
     private List<String> buildHeadLore(LivingEntity entity, Player killer, String displayName) {
         List<String> lore = new ArrayList<>();
 
@@ -1120,8 +1149,42 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
 
     private ItemStack createSpawnedMobHead(EntityType entityType, String spawner, String targetName) {
+        Material vanillaHeadMaterial = getVanillaHeadMaterial(entityType);
+
+        if (vanillaHeadMaterial != null) {
+            ItemStack head = new ItemStack(vanillaHeadMaterial);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+
+            if (meta != null) {
+                String displayName = getDisplayName(entityType);
+                String colorCode = config.getString("entity-colors." + entityType.name().toLowerCase(),
+                        getMobColorCode(entityType));
+
+                meta.setDisplayName(colorCode + displayName + " Head");
+
+                List<String> lore = new ArrayList<>();
+                if (!spawner.equals("Server")) {
+                    lore.add("§7Spawned by: §e" + spawner);
+                } else {
+                    lore.add("§7Was given to: §e" + targetName);
+                }
+                meta.setLore(lore);
+
+                String loreData = String.join("|", lore);
+                meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, displayName);
+                meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
+                meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, entityType.name());
+                meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
+
+                head.setItemMeta(meta);
+            }
+
+            return head;
+        }
+
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
+
         if (meta != null) {
             String displayName = getDisplayName(entityType);
             String profileName = getProfileName(entityType);
@@ -1354,6 +1417,46 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             runLater(null, this::flushQueuedHeadsToDisk, 600L);
         }
     }
+    private Material getMaterialSafely(String materialName) {
+        try {
+            Material material = Material.valueOf(materialName);
+            if (material.isItem()) {
+                return material;
+            }
+        } catch (IllegalArgumentException e) {
+            getLogger().fine("[HeadHunter] Material " + materialName + " not available in this version");
+        }
+        return null;
+    }
+
+    private Material getVanillaHeadMaterial(EntityType entityType) {
+        if (!VersionSafeEntityChecker.isEntityAvailable(entityType)) {
+            return null;
+        }
+
+        try {
+            switch (entityType) {
+                case ZOMBIE:
+                    return getMaterialSafely("ZOMBIE_HEAD");
+                case CREEPER:
+                    return getMaterialSafely("CREEPER_HEAD");
+                case SKELETON:
+                    return getMaterialSafely("SKELETON_SKULL");
+                case WITHER_SKELETON:
+                    return getMaterialSafely("WITHER_SKELETON_SKULL");
+                case PIGLIN:
+                    return getMaterialSafely("PIGLIN_HEAD");
+                case ENDER_DRAGON:
+                    return getMaterialSafely("DRAGON_HEAD");
+                default:
+                    return null;
+            }
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+
     private void flushQueuedHeadsToDisk() {
         if (queuedHeadsMemory.isEmpty()) {
             flushScheduled = false;
