@@ -2,71 +2,53 @@
 
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
-Current version: `2.0.4` 
+Current version: `2.0.7` 
 API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
 ```
+#######################################################################
+# GENERAL SETTINGS
+#######################################################################
+
+# Validate player names before creating heads
 player-validation:
   # Validation mode options:
-  # SERVER_ONLY - Only allow heads for players who have joined this server
-  # MOJANG_API - Check Mojang API to validate real Minecraft accounts (fastest, no server requirement)
-  # DISABLED - Allow any player name (no validation)
+  #  SERVER_ONLY - Only allow heads for players who joined this server
+  #  MOJANG_API  - Validate with Mojang API (recommended, fast)
+  #  DISABLED    - Allow any name (unsafe)
   mode: "MOJANG_API"
 
-  # Cache validation results to improve performance (recommended: true)
+  # Cache validation results (recommended: true)
   cache-results: true
 
-  # How long to cache validation results in minutes (recommended: 5-15)
+  # Duration (in minutes) to cache validation results
   cache-duration: 5
 
-skin-fetching:
-  enabled: true
-  cache-duration-minutes: 60
-  timeout-seconds: 5
-  fallback-to-default: true
-
-bedrock-compatibility: # Won’t display in inventory due to Geyser limitations.
-  enabled: true
-  force-refresh-textures: true
-  use-mojang-fallback: true
-
-
-# Enable/disable player head drops on player death
+# Player head drops
 player-head-drops-enabled: true
 
-# Enable/disable player head drops on player death
-allow_mannequin_skin: true
-
-# Enable/disable mob head drops on mob death
+# Mob head drops
 mob-head-drops-enabled: false
 
+# Allow mannequins to use player skins
+allow_mannequin_skin: true
 
-geyser:
-  # Enter the prefix for the bedrock clients
-  prefix: "."
 
-# sound settings
-head-sound-effects:
-  # Enable/disable the noteblock sound replacement feature
-  enabled: true
+#######################################################################
+# DROP CHANCE SETTINGS
+#######################################################################
 
-  # Play sound when head is placed on noteblock
-  play-on-place: false
+# Default drop chances by entity type
+default-boss-drop-chance: 100.0
+default-hostile-drop-chance: 5.0
+default-passive-drop-chance: 2.0
 
-  # Show particle effects when sounds play
-  particles: true
+# Looting enchantment bonus
+looting-increases-drop-chance: true
+looting-bonus-per-level: 5.0
 
-  # Send chat messages when animal sounds play
-  messages: false
-
-  # Volume for the animal sounds (0.1 to 2.0)
-  volume: 1.0
-
-  # Pitch for the animal sounds (0.5 to 2.0)
-  pitch: 1.0
-
-# Drop chances for mob heads (percent)
+# Specific mob drop chances (optional overrides)
 mob-head-drop-chances:
   spider: 10.0
   cave_spider: 10.0
@@ -146,6 +128,79 @@ mob-head-drop-chances:
   mannequin: 12.0
   copper_golem: 13.0
   happy_ghast: 39.0
+  skeleton: 0
+  wither_skeleton: 0 # This could cause the item to drop twice one with the lore other with basic minecraft stats
+  ender_dragon: 0
+  creeper: 0
+  piglin: 0
+
+
+#######################################################################
+# HEAD DISPLAY SETTINGS
+#######################################################################
+
+# Head lore format
+mob-head-lore-format: "§7Killed by: §c%killer%"
+
+# Extra lore options
+show-kill-location: false
+show-kill-time: false
+show-custom-name: true
+
+
+#######################################################################
+# SKIN & GEYSER COMPATIBILITY
+#######################################################################
+
+# Skin fetching from Mojang/third-party APIs
+skin-fetching:
+  enabled: true
+  cache-duration-minutes: 60
+  timeout-seconds: 5
+  fallback-to-default: true
+
+# Bedrock (Geyser) compatibility
+bedrock-compatibility:
+  enabled: true
+  force-refresh-textures: true
+  use-mojang-fallback: true
+
+geyser:
+  # Prefix for Bedrock clients
+  prefix: "."
+
+
+#######################################################################
+# SOUND & VISUAL EFFECTS
+#######################################################################
+
+head-sound-effects:
+  enabled: true               # Enable head sound feature
+  random-sounds: true         # Random sounds per entity
+  play-on-place: false        # Play when head placed on noteblock
+  particles: true             # Show particles when playing sounds
+  messages: false             # Send chat messages when sounds play
+  volume: 1.0                 # Volume (0.1–2.0)
+  pitch: 1.0                  # Pitch (0.5–2.0)
+
+
+#######################################################################
+# ENTITY COLOR CODES
+#######################################################################
+
+entity-colors:
+  zombie: "§2"
+  skeleton: "§f"
+  creeper: "§a"
+  enderman: "§5"
+  wither: "§4"
+  ender_dragon: "§5"
+  mannequin: "§9"
+  # Auto color legend:
+  #  §4 = Boss
+  #  §c = Monster
+  #  §b = Water
+  #  §a = Others
 ```
 
 Permissions:
