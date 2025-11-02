@@ -119,6 +119,11 @@ mob-head-drop-chances:
   mannequin: 12.0
   copper_golem: 13.0
   happy_ghast: 39.0
+  skeleton: 0
+  wither_skeleton: 0 # This could cause the item to drop twice one with the lore other with basic minecraft stats
+  ender_dragon: 0
+  creeper: 0
+  piglin: 0
 
 
 #######################################################################
