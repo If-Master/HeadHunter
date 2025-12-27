@@ -81,6 +81,10 @@ public class AnimalData {
                 case HOGLIN -> Sound.ENTITY_HOGLIN_AMBIENT;
                 case ZOGLIN -> Sound.ENTITY_ZOGLIN_AMBIENT;
                 case WARDEN -> Sound.ENTITY_WARDEN_AMBIENT;
+                case NAUTILUS -> Sound.ENTITY_BABY_NAUTILUS_AMBIENT;
+                case ZOMBIE_NAUTILUS -> Sound.ENTITY_ZOMBIE_NAUTILUS_AMBIENT;
+                case PARCHED ->  Sound.ENTITY_PARCHED_AMBIENT;
+                case CAMEL_HUSK ->  Sound.ENTITY_CAMEL_HUSK_AMBIENT;
                 default -> null;
             };
         } catch (NoSuchFieldError e) {
@@ -89,6 +93,7 @@ public class AnimalData {
     }
 
     public static void initializeMobTextures() {
+        // https://minecraft-heads.com/
         int successCount = 0;
         int skipCount = 0;
 
@@ -187,6 +192,13 @@ public class AnimalData {
 
         if (VersionSafeEntityChecker.isVersion1_21_10OrHigher()) {
             successCount += addTextureIfExists("COPPER_GOLEM", "http://textures.minecraft.net/texture/8711e2559a65891eff3f56dec0a132b95b37600f9c68ca2d71a24c91c427499f");
+        }
+        if (VersionSafeEntityChecker.isVersion1_21_11OrHigher()) {
+            successCount += addTextureIfExists("CAMEL_HUSK", "http://textures.minecraft.net/texture/750bfc9b2cc40f4d8d0224ccbabac26b338aa947d99dcde769f859b59b8d0b0e");
+            successCount += addTextureIfExists("NAUTILUS", "http://textures.minecraft.net/texture/32805e4a7982e706ebd2ea6c8209402cd7c1cf9cc08b7aace3a8af7718cca7dc");
+            successCount += addTextureIfExists("PARCHED", "http://textures.minecraft.net/texture/24aeceff5f26dd8413c5c03547c234ac03108d187af0b9cd834a8ce12598591c");
+            successCount += addTextureIfExists("ZOMBIE_NAUTILUS", "http://textures.minecraft.net/texture/fd9a933376da44c3391307cb9f4cf03f16f3a54f495fd5a11bad8a373f9d5720");
+
         }
 
         Bukkit.getLogger().info("[HeadHunter] Loaded textures: " + successCount + " entities");

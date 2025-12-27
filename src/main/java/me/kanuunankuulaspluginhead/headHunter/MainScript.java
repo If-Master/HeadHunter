@@ -861,6 +861,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                     case PIG, COW, SHEEP, CHICKEN, ALLAY, ARMADILLO, AXOLOTL, WOLF, COD, BEE, FOX, GOAT , CAT, BAT, CAMEL, DONKEY, FROG, GLOW_SQUID, HORSE,
                          MOOSHROOM, MULE, OCELOT, PARROT, PUFFERFISH, RABBIT, SALMON, SKELETON_HORSE, SNIFFER, SQUID, STRIDER, TADPOLE, TROPICAL_FISH, TURTLE,
                          WANDERING_TRADER, LLAMA, TRADER_LLAMA, COPPER_GOLEM, HAPPY_GHAST  -> "§a";
+                    case NAUTILUS, ZOMBIE_NAUTILUS, PARCHED, CAMEL_HUSK -> "§3";
                     case VILLAGER, IRON_GOLEM, SNOW_GOLEM, ZOMBIE_VILLAGER, ZOMBIE_HORSE, PANDA, DOLPHIN, POLAR_BEAR -> "§b";
                     case HOGLIN, ZOGLIN, PIGLIN_BRUTE, RAVAGER, HUSK, VINDICATOR  -> "§6";
                     case SLIME -> "§2";

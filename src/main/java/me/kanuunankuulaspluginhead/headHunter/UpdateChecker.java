@@ -78,25 +78,47 @@ public class UpdateChecker {
                 reader.close();
 
                 String json = response.toString();
-                String assetName = "HeadHunter.jar";
-                int index = json.indexOf("\"name\":\"" + assetName + "\"");
 
-                if (index == -1) {
-                    MainScript.runTask(null, () -> sender.sendMessage("§cRelease asset not found: " + assetName));
+                String assetName = null;
+                String assetId = null;
+
+                int searchIndex = 0;
+                while (searchIndex < json.length()) {
+                    int nameIndex = json.indexOf("\"name\":\"", searchIndex);
+                    if (nameIndex == -1) break;
+
+                    int nameStart = nameIndex + 8;
+                    int nameEnd = json.indexOf("\"", nameStart);
+                    String name = json.substring(nameStart, nameEnd);
+
+                    if (name.startsWith("HeadHunter") && name.endsWith(".jar")) {
+                        assetName = name;
+
+                        int idStart = json.lastIndexOf("\"id\":", nameIndex) + 5;
+                        int idEnd = json.indexOf(",", idStart);
+                        assetId = json.substring(idStart, idEnd).trim();
+                        break;
+                    }
+
+                    searchIndex = nameEnd;
+                }
+
+                if (assetName == null || assetId == null) {
+                    MainScript.runTask(null, () -> sender.sendMessage("§cNo HeadHunter.jar file found in latest release"));
                     return;
                 }
 
-                int idStart = json.lastIndexOf("\"id\":", index) + 5;
-                int idEnd = json.indexOf(",", idStart);
-                String assetId = json.substring(idStart, idEnd).trim();
-
+                final String foundAssetName = assetName;
+                sender.sendMessage("§aFound asset: " + foundAssetName);
                 downloadPluginUpdate(sender, assetId, plugin);
+
             } catch (Exception e) {
                 MainScript.runTask(null, () -> sender.sendMessage("§cFailed to update plugin: " + e.getMessage()));
                 e.printStackTrace();
             }
         });
     }
+
     public static void downloadPluginUpdate(CommandSender sender, String assetId, Plugin plugin) {
         MainScript.runAsync(() -> {
             try {
@@ -116,12 +138,29 @@ public class UpdateChecker {
                     return;
                 }
 
-                File pluginFile = new File(plugin.getDataFolder().getParentFile(), "HeadHunter.jar");
+                File pluginFile;
+                try {
+                    pluginFile = new File(plugin.getClass()
+                            .getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI());
+                } catch (Exception e) {
+                    pluginFile = new File(plugin.getDataFolder().getParentFile(), "HeadHunter.jar");
+                    getLogger().warning("Could not determine plugin JAR location, using fallback: " + pluginFile.getPath());
+                }
+
+                final String finalPath = pluginFile.getPath();
+
                 try (InputStream in = conn.getInputStream()) {
                     Files.copy(in, pluginFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
 
-                MainScript.runTask(null, () -> sender.sendMessage("§aPlugin updated. Restart the server to finish update."));
+                MainScript.runTask(null, () -> {
+                    sender.sendMessage("§aPlugin updated successfully!");
+                    sender.sendMessage("§aFile: " + finalPath);
+                    sender.sendMessage("§eRestart the server to complete the update.");
+                });
 
             } catch (Exception e) {
                 MainScript.runTask(null, () -> sender.sendMessage("§cFailed to download plugin asset."));

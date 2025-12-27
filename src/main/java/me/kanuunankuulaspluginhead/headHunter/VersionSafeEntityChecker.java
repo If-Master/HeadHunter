@@ -100,6 +100,20 @@ public class VersionSafeEntityChecker {
         }
         return false;
     }
+    public static boolean isVersion1_21_11OrHigher() {
+        try {
+            String[] parts = minecraftVersion.split("\\.");
+            if (parts.length >= 2) {
+                int major = Integer.parseInt(parts[0]);
+                int minor = Integer.parseInt(parts[1]);
+                int version = Integer.parseInt(parts[2]);
+                return major > 1 || (major == 1 && minor >= 21 && version >= 11);
+            }
+        } catch (Exception e) {
+        }
+        return false;
+    }
+
     public static boolean isVersion1_21_9OrHigher() {
         try {
             String[] parts = minecraftVersion.split("\\.");
