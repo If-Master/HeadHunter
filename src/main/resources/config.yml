@@ -124,12 +124,15 @@ mob-head-drop-chances:
   ender_dragon: 0
   creeper: 0
   piglin: 0
+  zombie_nautilus: 30.1
+  nautilus: 30.1
+  parched: 10.0
+  camel_husk: 1.0
 
 
 #######################################################################
 # HEAD DISPLAY SETTINGS
 #######################################################################
-
 # Head lore format
 mob-head-lore-format: "§7Killed by: §c%killer%"
 
