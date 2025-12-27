@@ -2,7 +2,7 @@
 
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
-Current version: `2.0.7` 
+Current version: `2.0.8` 
 API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
@@ -133,6 +133,10 @@ mob-head-drop-chances:
   ender_dragon: 0
   creeper: 0
   piglin: 0
+  zombie_nautilus: 30.1
+  nautilus: 30.1
+  parched: 10.0
+  camel_husk: 1.0
 
 
 #######################################################################
