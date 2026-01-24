@@ -1,4 +1,4 @@
-package me.kanuunankuulaspluginhead.headHunter;
+package me.kanuunankuulaspluginhead.headHunter.Util;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.EntityType;

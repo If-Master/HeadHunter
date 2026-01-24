@@ -1,4 +1,4 @@
-package me.kanuunankuulaspluginhead.headHunter;
+package me.kanuunankuulaspluginhead.headHunter.Sound;
 
 import org.bukkit.Location;
 import org.bukkit.Material;

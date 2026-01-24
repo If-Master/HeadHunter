@@ -1,5 +1,6 @@
-package me.kanuunankuulaspluginhead.headHunter;
+package me.kanuunankuulaspluginhead.headHunter.Util;
 
+import me.kanuunankuulaspluginhead.headHunter.MainScript;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
@@ -40,13 +41,13 @@ public class ItemSerializer {
 
             return serialized;
         } catch (IOException e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().warning("Failed to serialize item: " + e.getMessage());
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().warning("Failed to serialize item: " + e.getMessage());
             }
             return null;
         } catch (Exception e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().severe("Unexpected error during item serialization: " + e.getMessage());
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().severe("Unexpected error during item serialization: " + e.getMessage());
             }
             return null;
         }
@@ -67,32 +68,32 @@ public class ItemSerializer {
                 if (obj instanceof ItemStack) {
                     return (ItemStack) obj;
                 } else {
-                    if (MainScript.instance != null) {
-                        MainScript.instance.getLogger().warning("Deserialized object is not an ItemStack");
+                    if (MainScript.getInstance() != null) {
+                        MainScript.getInstance().getLogger().warning("Deserialized object is not an ItemStack");
                     }
                     return null;
                 }
             }
         } catch (IOException e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().warning("Failed to deserialize item (IO): " + e.getMessage());
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().warning("Failed to deserialize item (IO): " + e.getMessage());
             }
             return null;
         } catch (ClassNotFoundException e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().warning("Failed to deserialize item (class not found): " + e.getMessage());
-                MainScript.instance.getLogger().warning("This may indicate version incompatibility - item will be skipped");
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().warning("Failed to deserialize item (class not found): " + e.getMessage());
+                MainScript.getInstance().getLogger().warning("This may indicate version incompatibility - item will be skipped");
             }
             return null;
         } catch (IllegalArgumentException e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().warning("Failed to deserialize item (invalid data): " + e.getMessage());
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().warning("Failed to deserialize item (invalid data): " + e.getMessage());
             }
             return null;
         } catch (Exception e) {
-            if (MainScript.instance != null) {
-                MainScript.instance.getLogger().warning("Unexpected error during deserialization: " + e.getMessage());
-                MainScript.instance.getLogger().warning("This item was likely created in a different Minecraft version and cannot be loaded");
+            if (MainScript.getInstance() != null) {
+                MainScript.getInstance().getLogger().warning("Unexpected error during deserialization: " + e.getMessage());
+                MainScript.getInstance().getLogger().warning("This item was likely created in a different Minecraft version and cannot be loaded");
             }
             return null;
         }

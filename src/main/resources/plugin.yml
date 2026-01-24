@@ -1,8 +1,8 @@
 name: HeadHunter
-version: '2.0.6'
+version: '2.0.9'
 main: me.kanuunankuulaspluginhead.headHunter.MainScript
 api-version: '1.21'
-description: A plugin that drops player and mob heads when killed (1.21.6 -> ????)
+description: A plugin that drops player and mob heads when killed (1.21.6 -> 1.21.11)
 website: https://discord.gg/3MTD6e646G
 author: Kanuunankuula
 folia-supported: true

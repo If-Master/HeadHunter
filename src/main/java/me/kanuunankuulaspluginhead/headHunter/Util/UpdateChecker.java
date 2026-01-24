@@ -1,5 +1,6 @@
-package me.kanuunankuulaspluginhead.headHunter;
+package me.kanuunankuulaspluginhead.headHunter.Util;
 
+import me.kanuunankuulaspluginhead.headHunter.MainScript;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.Plugin;
 
@@ -91,7 +92,9 @@ public class UpdateChecker {
                     int nameEnd = json.indexOf("\"", nameStart);
                     String name = json.substring(nameStart, nameEnd);
 
-                    if (name.startsWith("HeadHunter") && name.endsWith(".jar")) {
+                    // Match any file that starts with "HeadHunter" (case-insensitive) and ends with ".jar"
+                    // This handles: HeadHunter.jar, HeadHunter-2.0.9.jar, HeadHunter-2.0.9-shaded.jar, etc.
+                    if (name.toLowerCase().startsWith("headhunter") && name.toLowerCase().endsWith(".jar")) {
                         assetName = name;
 
                         int idStart = json.lastIndexOf("\"id\":", nameIndex) + 5;

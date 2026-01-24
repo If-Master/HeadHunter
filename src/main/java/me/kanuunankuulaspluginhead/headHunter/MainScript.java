@@ -1,5 +1,11 @@
 package me.kanuunankuulaspluginhead.headHunter;
 
+import me.kanuunankuulaspluginhead.headHunter.Sound.DynamicSoundManager;
+import me.kanuunankuulaspluginhead.headHunter.Sound.SoundScript;
+import me.kanuunankuulaspluginhead.headHunter.Texture.EntityTextureManager;
+import me.kanuunankuulaspluginhead.headHunter.Util.ItemSerializer;
+import me.kanuunankuulaspluginhead.headHunter.Util.UpdateChecker;
+import me.kanuunankuulaspluginhead.headHunter.Util.VersionSafeEntityChecker;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Skull;
@@ -22,7 +28,6 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerProfile;
-import org.bukkit.profile.PlayerTextures;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
@@ -32,13 +37,12 @@ import org.bukkit.inventory.AnvilInventory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-import static me.kanuunankuulaspluginhead.headHunter.PlayerSkinData.createAndGivePlayerHeadWithSkin;
+import static me.kanuunankuulaspluginhead.headHunter.Texture.PlayerSkinData.createAndGivePlayerHeadWithSkin;
 
 public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     // Version Data
@@ -52,11 +56,14 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private static boolean isFolia = false;
 
     private File notificationsFile;
-    public File soundScript;
     static MainScript instance;
     public static FileConfiguration config;
 
     private static final long CACHE_EXPIRY = 300000;
+
+    public static MainScript getInstance() {
+        return instance;
+    }
 
 
     // Booleans
@@ -87,12 +94,10 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     private static final Map<String, Long> CACHE_TIMESTAMPS = new ConcurrentHashMap<>();
     private static final Map<String, UUID> UUID_CACHE = new ConcurrentHashMap<>();
     private final Map<UUID, List<String>> queuedHeadsMemory = new ConcurrentHashMap<>();
-    private final Map<String, UUID> mobHeadUUIDs = new HashMap<>();
     private Map<UUID, Boolean> playerNotificationPreferences = new HashMap<>();
     public static final Map<EntityType, String> mobTextures = new HashMap<>();
     public static final Map<String, PlayerProfile> SKIN_CACHE = new ConcurrentHashMap<>();
     public static final Map<String, Long> SKIN_CACHE_TIMESTAMPS = new ConcurrentHashMap<>();
-    public static final long SKIN_CACHE_EXPIRY = 3600000;
 
     public enum ValidationMode {
         SERVER_ONLY,
@@ -341,31 +346,54 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
+        List<String> allHeads = new ArrayList<>();
+
+        synchronized (queuedHeadsMemory) {
+            List<String> memoryHeads = queuedHeadsMemory.remove(uuid);
+            if (memoryHeads != null && !memoryHeads.isEmpty()) {
+                allHeads.addAll(memoryHeads);
+                getLogger().info("[HeadHunter] Found " + memoryHeads.size() + " queued head(s) in memory for " + player.getName());
+            }
+        }
+
         File file = new File(getDataFolder(), "queued_heads.yml");
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-        List<String> base64List = config.getStringList(uuid.toString());
+        List<String> diskHeads = config.getStringList(uuid.toString());
 
-        if (base64List == null || base64List.isEmpty()) return;
+        if (diskHeads != null && !diskHeads.isEmpty()) {
+            allHeads.addAll(diskHeads);
+            getLogger().info("[HeadHunter] Found " + diskHeads.size() + " queued head(s) on disk for " + player.getName());
+        }
 
-        runTask(player.getLocation(), () -> {
-            for (String base64 : base64List) {
-                ItemStack item = ItemSerializer.deserialize(base64);
-                if (item != null) {
-                    player.getInventory().addItem(item);
+        if (!allHeads.isEmpty()) {
+            final int headCount = allHeads.size();
+            runTask(player.getLocation(), () -> {
+                int successCount = 0;
+                for (String base64 : allHeads) {
+                    ItemStack item = ItemSerializer.deserialize(base64);
+                    if (item != null) {
+                        player.getInventory().addItem(item);
+                        successCount++;
+                    } else {
+                        getLogger().warning("[HeadHunter] Failed to deserialize queued head for " + player.getName());
+                    }
                 }
-            }
 
-            player.sendMessage("§aYou received " + base64List.size() + " head(s) while you were offline.");
-            config.set(uuid.toString(), null);
+                if (successCount > 0) {
+                    player.sendMessage("§aYou received " + successCount + " head(s) while you were offline.");
+                }
+            });
 
-            try {
-                config.save(file);
-            } catch (IOException e) {
-                getLogger().warning("Failed to save queued_heads.yml: " + e.getMessage());
-            }
-
-
-        });
+            runAsync(() -> {
+                config.set(uuid.toString(), null);
+                try {
+                    config.save(file);
+                    getLogger().info("[HeadHunter] Cleared " + headCount + " queued head(s) from disk for " + player.getName());
+                } catch (IOException e) {
+                    getLogger().warning("Failed to save queued_heads.yml: " + e.getMessage());
+                }
+            });
+        }
 
         if (!player.hasPermission("hh.update") || !isUpdateAvailable) return;
         runLater(player.getLocation(), () -> {
@@ -378,11 +406,11 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
         }, 40L);
     }
-
     @Override
     public void onEnable() {
         instance = this;
         VersionSafeEntityChecker.initialize();
+
         getLogger().info("╔════════════════════════════════════════╗");
         getLogger().info("║      HeadHunter Version Detection     ║");
         getLogger().info("╠════════════════════════════════════════╣");
@@ -404,31 +432,31 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
 
         getServer().getPluginManager().registerEvents(new SoundScript(), this);
-        getServer().getPluginManager().registerEvents(new Listener() {
-            @EventHandler
-            public void onJoin(PlayerJoinEvent event) {
-                Player player = event.getPlayer();
-                File file = new File(getDataFolder(), "queued_heads.yml");
-                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-
-                List<String> list = config.getStringList(player.getUniqueId().toString());
-                if (list == null || list.isEmpty()) return;
-
-                for (String base64 : list) {
-                    ItemStack item = ItemSerializer.deserialize(base64);
-                    player.getInventory().addItem(item);
-                }
-
-                config.set(player.getUniqueId().toString(), null);
-                try {
-                    config.save(file);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                player.sendMessage("§aYou received " + list.size() + " head(s) while you were offline.");
-            }
-        }, this);
+//        getServer().getPluginManager().registerEvents(new Listener() {
+//            @EventHandler
+//            public void onJoin(PlayerJoinEvent event) {
+//                Player player = event.getPlayer();
+//                File file = new File(getDataFolder(), "queued_heads.yml");
+//                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+//
+//                List<String> list = config.getStringList(player.getUniqueId().toString());
+//                if (list == null || list.isEmpty()) return;
+//
+//                for (String base64 : list) {
+//                    ItemStack item = ItemSerializer.deserialize(base64);
+//                    player.getInventory().addItem(item);
+//                }
+//
+//                config.set(player.getUniqueId().toString(), null);
+//                try {
+//                    config.save(file);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                player.sendMessage("§aYou received " + list.size() + " head(s) while you were offline.");
+//            }
+//        }, this);
 
         saveDefaultConfig();
         config = getConfig();
@@ -439,16 +467,13 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         loreKey = new NamespacedKey(this, "lore");
         getServer().getPluginManager().registerEvents(this, this);
 
-        AnimalData.initializeMobTextures();
-
         EntityTextureManager.initialize();
         DynamicSoundManager.initialize();
 
         Map<String, Object> entityDebug = EntityTextureManager.getDebugInfo();
         getLogger().info("[HeadHunter] Entity System:");
         getLogger().info("  - Killable Entities: " + entityDebug.get("killable_entities"));
-        getLogger().info("  - Predefined Textures: " + entityDebug.get("predefined_textures"));
-        getLogger().info("  - Generated Textures: " + entityDebug.get("generated_textures"));
+        getLogger().info("  - Mapped Variants: " + entityDebug.get("mapped_variants"));
         getLogger().info("  - Entities with Texture: " + entityDebug.get("entities_with_texture"));
 
         Map<String, Object> soundDebug = DynamicSoundManager.getDebugInfo();
@@ -457,7 +482,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         getLogger().info("  - Random Sounds: " + soundDebug.get("random_sounds_enabled"));
         getLogger().info("  - Total Sounds: " + soundDebug.get("total_sounds"));
 
-        initializeMobUUIDs();
 
         notificationsFile = new File(getDataFolder(), "notifications.txt");
         if (!notificationsFile.exists()) {
@@ -872,13 +896,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         }
 
     }
-    private void initializeMobUUIDs() {
-        for (EntityType type : mobTextures.keySet()) {
-            String name = type.name().replace("_", " ").toLowerCase();
-            name = name.substring(0, 1).toUpperCase() + name.substring(1);
-            mobHeadUUIDs.put(type.name(), UUID.nameUUIDFromBytes(("mobhead_" + type.name()).getBytes()));
-        }
-    }
 
     // Getters
     public static String getDisplayName(EntityType entityType) {
@@ -998,35 +1015,6 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         });
     }
 
-    public static void createAndGivePlayerHead(Player player, String playerName) {
-        Player targetPlayer = Bukkit.getPlayer(playerName);
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        if (meta != null) {
-            if (targetPlayer != null) {
-                meta.setOwningPlayer(targetPlayer);
-            } else {
-                meta.setOwningPlayer(Bukkit.getOfflinePlayer(playerName));
-            }
-            meta.setDisplayName("§b" + playerName + "'s Head");
-
-            List<String> lore = new ArrayList<>();
-            lore.add("§7Spawned by: §e" + player.getName());
-            meta.setLore(lore);
-
-            meta.getPersistentDataContainer().set(headOwnerKey, PersistentDataType.STRING, playerName);
-            meta.getPersistentDataContainer().set(killerKey, PersistentDataType.STRING, "SPAWNED");
-            meta.getPersistentDataContainer().set(headTypeKey, PersistentDataType.STRING, "PLAYER");
-
-            String loreData = String.join("|", lore);
-            meta.getPersistentDataContainer().set(loreKey, PersistentDataType.STRING, loreData);
-
-            head.setItemMeta(meta);
-        }
-
-        player.getInventory().addItem(head);
-        player.sendMessage("§aSpawned " + playerName + "'s head!");
-    }
     private ItemStack createPlayerHead(Player victim, Player killer) {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -1102,7 +1090,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         List<String> lore = buildHeadLore(entity, killer, displayName);
         meta.setLore(lore);
 
-        PlayerProfile profile = EntityTextureManager.getOrCreateProfile(entityType, profileName);
+        PlayerProfile profile = EntityTextureManager.getOrCreateProfile(entityType, profileName, entity);
         if (profile != null) {
             meta.setOwnerProfile(profile);
         } else {
@@ -1218,7 +1206,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             }
 
             if (!isMannequin || allowMannequinSkin) {
-                PlayerProfile profile = EntityTextureManager.getOrCreateProfile(entityType, profileName);
+                PlayerProfile profile = EntityTextureManager.getOrCreateProfile(entityType, profileName, null);
                 if (profile != null) {
                     meta.setOwnerProfile(profile);
                 }
@@ -1253,13 +1241,15 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             return;
         }
 
+        // Try to find the entity type
         EntityType entityType = null;
         try {
             entityType = EntityType.valueOf(mobName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            for (EntityType type2 : EntityTextureManager.getKillableEntities()) {
-                if (type2.name().equalsIgnoreCase(mobName)) {
-                    entityType = type2;
+            // Try to find it by matching against available entities
+            for (EntityType type : EntityTextureManager.getKillableEntities()) {
+                if (type.name().equalsIgnoreCase(mobName)) {
+                    entityType = type;
                     break;
                 }
             }
@@ -1267,6 +1257,7 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
 
         if (entityType == null || !EntityTextureManager.isKillableEntity(entityType)) {
             sender.sendMessage("§cInvalid or unsupported mob type: " + mobName);
+            sender.sendMessage("§7Use tab completion to see available entities");
             return;
         }
 
@@ -1278,12 +1269,13 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
                 onlinePlayer.getInventory().addItem(head);
                 onlinePlayer.sendMessage("§aYou have received a " + mobName + " head from the server!");
             });
-            sender.sendMessage("§aGiven head to online player " + targetName);
+            sender.sendMessage("§aGiven " + getDisplayName(entityType) + " head to online player " + targetName);
         } else {
             queueHeadForPlayer(targetPlayer.getUniqueId(), head);
-            sender.sendMessage("§aQueued head for offline player " + targetName);
+            sender.sendMessage("§aQueued " + getDisplayName(entityType) + " head for offline player " + targetName);
         }
     }
+
     private void purchaseHead(CommandSender sender, String[] args) {
         if (args.length < 4) {
             sender.sendMessage("§cUsage: /hh give entity <mob> <player>");
@@ -1296,34 +1288,42 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
             String mobName = args[2].toLowerCase();
             String playerName = args[3];
 
-            EntityType entityType = ENTITY_TYPE_LOOKUP.get(mobName.toLowerCase());
+            // Try to find the entity type
+            EntityType entityType = null;
+            try {
+                entityType = EntityType.valueOf(mobName.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Try to find it by matching against available entities
+                for (EntityType type2 : EntityTextureManager.getKillableEntities()) {
+                    if (type2.name().equalsIgnoreCase(mobName)) {
+                        entityType = type2;
+                        break;
+                    }
+                }
+            }
 
-            if (entityType == null || !mobTextures.containsKey(entityType)) {
-                sender.sendMessage("§cInvalid or unsupported mob type.");
+            if (entityType == null || !EntityTextureManager.isKillableEntity(entityType)) {
+                sender.sendMessage("§cInvalid or unsupported mob type: " + mobName);
+                sender.sendMessage("§7Use tab completion to see available entities");
                 return;
             }
 
             OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(playerName);
             Player targetPlayer = offlineTarget.getPlayer();
 
-            if (targetPlayer == null || !targetPlayer.isOnline()) {
+            if (targetPlayer == null || !offlineTarget.isOnline()) {
                 sender.sendMessage("§cThe target player is not online.");
                 return;
             }
 
-            ItemStack head = createSpawnedMobHead(entityType, playerName, playerName);
-
-            if (targetPlayer == null || !offlineTarget.isOnline()) {
-                queueHeadForPlayer(offlineTarget.getUniqueId(), head);
-                sender.sendMessage("§e" + playerName + " is offline. Head will be delivered when they log in.");
-                return;
-            }
-
+            ItemStack head = createSpawnedMobHead(entityType, sender.getName(), playerName);
             targetPlayer.getInventory().addItem(head);
 
-
-            String mobDisplayName = Character.toUpperCase(mobName.charAt(0)) + mobName.substring(1).replace("_", " ");
-            sender.sendMessage("§aGave " + mobDisplayName + " head to " + targetPlayer.getName() + "!");
+            String displayName = getDisplayName(entityType);
+            sender.sendMessage("§aGave " + displayName + " head to " + targetPlayer.getName() + "!");
+            targetPlayer.sendMessage("§aYou received a " + displayName + " head from " + sender.getName() + "!");
+        } else {
+            sender.sendMessage("§cInvalid type. Use 'entity'");
         }
     }
 

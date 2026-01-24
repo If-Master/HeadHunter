@@ -1,12 +1,14 @@
-package me.kanuunankuulaspluginhead.headHunter;
+package me.kanuunankuulaspluginhead.headHunter.Sound;
 
+import me.kanuunankuulaspluginhead.headHunter.MainScript;
+import me.kanuunankuulaspluginhead.headHunter.Texture.EntityTextureManager;
+import me.kanuunankuulaspluginhead.headHunter.Texture.Enum.EntityHeadVariants;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.EntityType;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class DynamicSoundManager {
     private static final Map<EntityType, List<Sound>> ENTITY_SOUNDS = new ConcurrentHashMap<>();
@@ -14,34 +16,52 @@ public class DynamicSoundManager {
     private static boolean randomSoundsEnabled = true;
 
     public static void initialize() {
-        Bukkit.getLogger().info("[HeadHunter] Scanning for entity sounds dynamically...");
+        Bukkit.getLogger().info("[HeadHunter] Initializing sound system...");
         randomSoundsEnabled = MainScript.config.getBoolean("head-sound-effects.random-sounds", true);
 
-        scanAllEntitySounds();
-        loadManualSoundMappings();
+        loadSoundsFromVariants();
+        scanAdditionalSounds();
 
         Bukkit.getLogger().info("[HeadHunter] Loaded sounds for " + ENTITY_SOUNDS.size() + " entity types");
     }
 
-    private static void scanAllEntitySounds() {
-        int scannedCount = 0;
-        int soundsFoundCount = 0;
+    private static void loadSoundsFromVariants() {
+        for (EntityHeadVariants variant : EntityHeadVariants.values()) {
+            try {
+                EntityType type = EntityType.valueOf(variant.getName());
+                String soundKey = variant.getSound();
 
+                Sound sound = parseSoundKey(soundKey);
+                if (sound != null) {
+                    ENTITY_SOUNDS.computeIfAbsent(type, k -> new ArrayList<>()).add(sound);
+                }
+            } catch (IllegalArgumentException e) {
+                // Entity doesn't exist in this version
+            }
+        }
+    }
+
+    private static Sound parseSoundKey(String soundKey) {
+        try {
+            // Convert "entity.pig.ambient" to "ENTITY_PIG_AMBIENT"
+            String enumName = soundKey.toUpperCase().replace('.', '_');
+            return Sound.valueOf(enumName);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static void scanAdditionalSounds() {
         for (EntityType type : EntityTextureManager.getKillableEntities()) {
-            if (!VersionSafeEntityChecker.isEntityAvailable(type)) {
+            if (ENTITY_SOUNDS.containsKey(type)) {
                 continue;
             }
 
-            scannedCount++;
             List<Sound> sounds = findSoundsForEntity(type);
-
             if (!sounds.isEmpty()) {
                 ENTITY_SOUNDS.put(type, sounds);
-                soundsFoundCount++;
             }
         }
-
-        Bukkit.getLogger().info("[HeadHunter] Scanned " + scannedCount + " entities, found sounds for " + soundsFoundCount);
     }
 
     private static List<Sound> findSoundsForEntity(EntityType type) {
@@ -56,14 +76,11 @@ public class DynamicSoundManager {
                     String suffix = soundName.substring(("ENTITY_" + entityName + "_").length());
 
                     if (isRelevantSoundType(suffix)) {
-                        try {
-                            sound.getKey();
-                            sounds.add(sound);
-                        } catch (Exception e) {
-                        }
+                        sounds.add(sound);
                     }
                 }
             } catch (Exception e) {
+                // Skip invalid sounds
             }
         }
 
@@ -82,33 +99,7 @@ public class DynamicSoundManager {
                 return true;
             }
         }
-
         return false;
-    }
-
-    private static void loadManualSoundMappings() {
-        addManualSounds(EntityType.PLAYER, Arrays.asList(
-                Sound.ENTITY_PLAYER_BREATH, Sound.ENTITY_PLAYER_HURT, Sound.ENTITY_PLAYER_BURP
-        ));
-
-        addManualSounds(EntityType.CREEPER, Arrays.asList(
-                Sound.ENTITY_CREEPER_PRIMED, Sound.ENTITY_CREEPER_HURT
-        ));
-
-        for (EntityType type : EntityTextureManager.getKillableEntities()) {
-            Sound legacySound = AnimalData.getAnimalSound(type);
-            if (legacySound != null && !ENTITY_SOUNDS.containsKey(type)) {
-                ENTITY_SOUNDS.put(type, Collections.singletonList(legacySound));
-            }
-        }
-    }
-
-    private static void addManualSounds(EntityType type, List<Sound> sounds) {
-        ENTITY_SOUNDS.merge(type, sounds, (existing, newSounds) -> {
-            List<Sound> merged = new ArrayList<>(existing);
-            merged.addAll(newSounds);
-            return merged.stream().distinct().collect(Collectors.toList());
-        });
     }
 
     public static Sound getSound(EntityType type) {
