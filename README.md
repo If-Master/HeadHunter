@@ -2,7 +2,7 @@
 
 With this plugin you are able to config both player heads and mob heads following information will be both how to activate it and the permissions related to it
 
-Current version: `2.0.8` 
+Current version: `2.0.9` 
 API-version: `1.21`
 
 Activating is as simple as placing it in your plugins folder. Following is the config of this plugin it will be updated accordingly:
@@ -234,4 +234,4 @@ Permissions:
 
 
 Known issues:
-1. Texture ain't shown on bedrock clients - With Geyser 
+1. Texture ain't shown on bedrock clients - With Geyser ( Gonna work on that for a future update )  
