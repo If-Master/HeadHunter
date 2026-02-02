@@ -3,6 +3,7 @@ package me.kanuunankuulaspluginhead.headHunter;
 import me.kanuunankuulaspluginhead.headHunter.Sound.DynamicSoundManager;
 import me.kanuunankuulaspluginhead.headHunter.Sound.SoundScript;
 import me.kanuunankuulaspluginhead.headHunter.Texture.EntityTextureManager;
+//import me.kanuunankuulaspluginhead.headHunter.Util.GeyserIntegration;
 import me.kanuunankuulaspluginhead.headHunter.Util.ItemSerializer;
 import me.kanuunankuulaspluginhead.headHunter.Util.UpdateChecker;
 import me.kanuunankuulaspluginhead.headHunter.Util.VersionSafeEntityChecker;
@@ -20,8 +21,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -29,7 +29,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.profile.PlayerProfile;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
@@ -159,6 +158,45 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
     @EventHandler
     public void onPistonRetract(BlockPistonRetractEvent event) {
         for (Block block : event.getBlocks()) {
+            if (block.getType() == Material.PLAYER_HEAD || block.getType() == Material.PLAYER_WALL_HEAD) {
+                if (block.getState() instanceof Skull skull) {
+                    if (skull.getPersistentDataContainer().has(headOwnerKey, PersistentDataType.STRING)) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        if (event.getEntity() instanceof Wither) {
+            Block block = event.getBlock();
+            if (block.getType() == Material.PLAYER_HEAD || block.getType() == Material.PLAYER_WALL_HEAD) {
+                if (block.getState() instanceof Skull skull) {
+                    if (skull.getPersistentDataContainer().has(headOwnerKey, PersistentDataType.STRING)) {
+                        event.setCancelled(true);
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof ArmorStand) {
+            ArmorStand stand = (ArmorStand) event.getEntity();
+            if (stand.getPersistentDataContainer().has(headOwnerKey, PersistentDataType.STRING)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        if (event.getDamager() instanceof LivingEntity) {
+            Location loc = event.getEntity().getLocation();
+            Block block = loc.getBlock();
+
             if (block.getType() == Material.PLAYER_HEAD || block.getType() == Material.PLAYER_WALL_HEAD) {
                 if (block.getState() instanceof Skull skull) {
                     if (skull.getPersistentDataContainer().has(headOwnerKey, PersistentDataType.STRING)) {
@@ -468,6 +506,24 @@ public class MainScript extends JavaPlugin implements Listener, TabCompleter {
         getServer().getPluginManager().registerEvents(this, this);
 
         EntityTextureManager.initialize();
+//        getServer().getPluginManager().registerEvents(new Listener() {
+//            @EventHandler
+//            public void onServerLoad(org.bukkit.event.server.ServerLoadEvent event) {
+//                if (Bukkit.getPluginManager().isPluginEnabled("Geyser-Spigot")) {
+//                    try {
+//                        Class<?> geyserClass = Class.forName("me.kanuunankuulaspluginhead.headHunter.Util.GeyserIntegration");
+//                        geyserClass.getMethod("initialize").invoke(null);
+//                        getLogger().info("[HeadHunter] Geyser integration loaded successfully!");
+//                    } catch (Exception e) {
+//                        getLogger().warning("[HeadHunter] Failed to load Geyser integration: " + e.getMessage());
+//                    }
+//                } else {
+//                    getLogger().info("[HeadHunter] Geyser not found - Bedrock skull support disabled");
+//                }
+//            }
+//        }, this);
+
+
         DynamicSoundManager.initialize();
 
         Map<String, Object> entityDebug = EntityTextureManager.getDebugInfo();
